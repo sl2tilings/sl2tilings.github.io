@@ -1,0 +1,17 @@
+body {
+	background-color: white;
+	font-family: sans-serif;
+	color: #101010;
+}
+a:link, a:visited {
+	color: brown;
+}
+h1, .header{
+	padding: 0;
+	margin: auto;
+	text-align: center;
+}
+
+ul li {
+    margin-bottom: 0.5em;
+}
