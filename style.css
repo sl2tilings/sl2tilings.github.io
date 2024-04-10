@@ -1,17 +1,27 @@
 body {
-	background-color: white;
+	background-color: #FFFCFC;
 	font-family: sans-serif;
-	color: #101010;
+	color: #202122;
 }
+
 a:link, a:visited {
 	color: brown;
 }
-h1, .header{
+
+h1, .header {
 	padding: 0;
 	margin: auto;
 	text-align: center;
+	margin-bottom: 0.3em;
 }
 
+ul.nav > li { display: inline-block; }
+
+ul.nav > li::after { content: " \2022"; }
+
+ul.nav > li:last-child::after { content: none; }
+
 ul li {
-    margin-bottom: 0.5em;
+    margin-top: 0.2em;
+    margin-bottom: 0.3em;
 }
