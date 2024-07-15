@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>
+Triangulations and friezes
+</title>
+<script src="polynomial.js"></script>
+<script src="triangulated.js"></script>
+<link rel="stylesheet" type="text/css" media="screen" href="style.css">
+<style>
+.itinerary-entry {
+	font-size: 40px;
+}
+.itinerary-button {
+}
+.farey-fraction {
+	text-align: center;
+}
+table.itinerary > tr > td {
+	padding-right: 5px;
+	padding-left:  5px;
+}
+.frieze {
+	font-size: 30px;
+}
+table.frieze > tr > td {
+	width: 2.2ch;
+	text-align: right;
+	border-color: white;
+	border-width: thin;
+	border-style: solid;
+}
+table.frieze > tr > td.frieze-entry-clustervar {
+	background-color: LightGrey;
+}
+table.frieze > tr > td.frieze-entry-one {
+	background-color: WhiteSmoke;
+}
+table.frieze > tr > td.frieze-entry-shmaurent {
+	border-color: black;
+}
+span.frac { /* inspired by stackoverflow.com/a/41679399 */
+  display: inline-block;
+  text-align: center;
+  vertical-align: middle;
+}
+span.frac > .num, span.frac > .den {
+  display: block;
+  font: inherit;
+}
+span.frac > .num { border-bottom: 0.06em solid; }
+span.hidden {
+    position: absolute;
+    clip: rect(0,0,0,0);
+}
+table.clustervars > tr > td {
+	text-align: center;
+}
+.negative {
+	display: none;
+}
+.negative-show {
+	display: inline;
+	background-color: #FFF6FF;
+}
+</style>
+</head>
+
+<body>
+<h2>
+Triangulations and friezes
+</h2>
+
+<p>This is a demonstration of the connections between triangulated polygons, paths in the Farey graph, Conway&ndash;Coxeter friezes, and cluster variables. For the background infromation on this, see <a href="research.html">our research</a> and references therein.</p>
+
+<p>The picture shows a polygon dissected into triangles, i.e. a triangulation. There are two ways to modify the triangulation: the first is by left-clicking on a diagonal to flip it; the second is using the itinerary. <span class="negative">Right-click to make the diagonal <em>negative</em>; this affects the frieze, see below.</span></p>
+
+<p>The itinerary of the corresponding path in the Farey graph, i.e. the counts of the triangles at each vertex, is shown to the right of the picture. Click on a <b>1</b> button to insert a 1 into the itinerary, which corresponds to attaching a triangle to a side of the triangulation, or click on a <b>x</b> button to remove a 1 from the itinerary, which corresponds to removing an external triangle from the triangulation. One possible choice of the vertices of the path in the Farey graph is shown below the corresponding itinerary entries.</p>
+
+<p>There is a tame integer frieze corresponding to the triangulation<span class="negative"> with prescribed signs of diagonals</span>. The fundamental domain of that frieze under the action of its glide reflection symmetry is shown. Every entry in the frieze corresponds to a pair of vertices in the triangulation, hover or tap to highlight the corresponding diagonal. The entries corresponding to the diagonals in the triangulation (all equal to 1<span class="negative"> for positive diagonals or −1 for negative diagonals</span>) have shaded background; these entries also correspond to the initial cluster variables, see below. The quiddity of the frieze (i.e. the row right below the row of 1s) is equal to the itinerary of the triangulation<span class="negative"> if all diagonals are positive</span>. <span class="negative">An integer frieze with negative entries still corresponds to some path in the Farey graph. That path has itinerary and vertices different from the ones shown, however they still can be read out directly from the frieze itself.</span></p>
+
+<p>Every pair of vertices in the triangulated <i class="math">n</i>-gon also corresponds to a cluster variable in the cluster algebra of type <span class="math"><i>A</i><sub><i>n</i>−3</sub></span>. The triangulation defines a particular choice of initial cluster variables. All cluster variables are shown in the bottom part of the page. Again, the corresponding diagonal in the picture is highlighted upon hover or tap, and the list of the initial cluster variables <i class="math">x<sub>i</sub></i> is additionally given for convenience. The entries of the frieze are obtained by evaluating the corresponding cluster variables at <span class="math"><i>x<sub>i</sub></i> = 1</span><span class="negative"> or <span class="math">−1</span></span>, so the entire frieze can be restored from these values only.</p>
+
+<p><span class="negative">Cluster variables are known to exhibit the Laurent phenomenon, which in particular means that evaluating them at <span class="math"><i>x<sub>i</sub></i> = 1</span> or <span class="math">−1</span> always results in integer numbers. However when some initial cluster variables are set to be equal to <span class="math">−1</span>, which can be done in this app by making diagonals negative, the <em>Schmaurent phenomenon</em> arises: some of the remaining initial cluster variables are no longer present in the denominators of the Laurent polynomials. Thus, they can be set to be equal to any integer number, still giving integer results upon the evaluation of cluster variables. Although this app can only set such initial cluster variables to <span class="math">1</span>, the entries of the frieze corresponding to them are boxed to indicate that these values can be replaced by any integer, and it would still be possible to restore the entire tame integer frieze from these entries.</span></p>
+
+<div class="math">
+<div style="display: flex;">
+  <div style="display: block;">
+  <canvas id="canvas" width="400" height="400"></canvas>
+  </div>
+  <div style="display: block;">
+    <div style="display: block;">
+	<table id="itinerary" class="itinerary"></table>
+    </div>
+    <div style="display: block; margin-top: 100px;">
+	<table id="frieze" class="frieze"></table>
+    </div>
+  </div>
+</div>
+<div id="clustervars-text"></div>
+<div style="overflow-x: auto;">
+<table id="clustervars" class="clustervars"></table>
+</div>
+</div>
+
+</body>
+</html>

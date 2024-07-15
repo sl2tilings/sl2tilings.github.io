@@ -4,6 +4,10 @@ body {
 	color: #202122;
 }
 
+.math {
+	font-family: serif;
+}
+
 a:link, a:visited {
 	color: brown;
 }
