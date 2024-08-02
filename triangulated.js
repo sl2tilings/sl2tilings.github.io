@@ -302,7 +302,7 @@ function calculate_frieze() {
 		frieze.push(Array(i).fill('-'));
 	}
 	if (n < 3) {
-		return frieze;
+		return [frieze, []];
 	}
 	frieze.push([1]);
 	calculate_cluster_vars();
