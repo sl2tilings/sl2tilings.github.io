@@ -1,15 +1,16 @@
 'use strict';
 
-let canvas, ctx, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
+let svg, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
 let vx, closest_diag, highlighted_vertex, highlighted_diag;
 let negative_text_hidden = true;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1]); // the itinerary 1, n-2, 1, 2, 2, 2...
 let itinerary = null, cluster_vars;
+const ns = 'http://www.w3.org/2000/svg';
 
 function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
 	vx = [...Array(n).keys()].map(i => {
-		const [cx, cy] = [canvas.width / 2, canvas.height / 2];
+		const [cx, cy] = [svg.getAttribute('width') / 2, svg.getAttribute('height') / 2];
 		const r = cy - 10;
 		const a = Math.PI * (2.0 * i / n - 0.5);
 		return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
@@ -415,7 +416,7 @@ const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
 ]);
 
 function draw() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	svg.replaceChildren();
 	if (highlighted_diag !== null) {
 		for (let v1 = 1; v1 < n; v1++) {
 			for (let v2 = 0; v2 < v1; v2++) {
@@ -436,26 +437,33 @@ function draw() {
 
 function draw_vertex(v, vx_i = null) {
 	if (vx_i !== null && vx_i === highlighted_vertex) {
-		ctx.beginPath();
-		ctx.arc(v[0], v[1], 9, 0, 2*Math.PI);
-		ctx.fillStyle = HIGHLIGHT_STYLE;
-		ctx.fill();
+		const c = document.createElementNS(ns, 'circle');
+		c.setAttribute('cx', v[0]);
+		c.setAttribute('cy', v[1]);
+		c.setAttribute('r', 9);
+		c.setAttribute('fill', HIGHLIGHT_STYLE);
+		svg.appendChild(c);
 	}
-	ctx.beginPath();
-	ctx.arc(v[0], v[1], 5, 0, 2*Math.PI);
-	ctx.fillStyle = 'black';
-	ctx.fill();
+	const c = document.createElementNS(ns, 'circle');
+	c.setAttribute('cx', v[0]);
+	c.setAttribute('cy', v[1]);
+	c.setAttribute('r', 5);
+	c.setAttribute('fill', 'black');
+	svg.appendChild(c);
 }
 
 function draw_highlight(i1, i2) { // [i1, i2] and highlighted_diag are always in the descending order
 	if (i1 === highlighted_diag[0] && i2 === highlighted_diag[1]) {
 		const [v1, v2] = [vx[i1], vx[i2]];
-		ctx.lineWidth = 7;
-		ctx.beginPath();
-		ctx.moveTo(v1[0], v1[1]);
-		ctx.lineTo(v2[0], v2[1]);
-		ctx.strokeStyle = HIGHLIGHT_STYLE;
-		ctx.stroke();
+		const line = document.createElementNS(ns, 'line');
+		line.setAttribute('x1', v1[0]);
+		line.setAttribute('y1', v1[1]);
+		line.setAttribute('x2', v2[0]);
+		line.setAttribute('y2', v2[1]);
+		line.setAttribute('stroke-width', 7);
+		line.setAttribute('stroke-linecap', 'round');
+		line.setAttribute('stroke', HIGHLIGHT_STYLE);
+		svg.appendChild(line);
 	}
 }
 
@@ -463,12 +471,15 @@ function draw_edge(data) {
 	const [vertices, style] = data;
 	const [i1, i2] = vertices;
 	const [v1, v2] = [vx[i1], vx[i2]];
-	ctx.lineWidth = 3;
-	ctx.beginPath();
-	ctx.moveTo(v1[0], v1[1]);
-	ctx.lineTo(v2[0], v2[1]);
-	ctx.strokeStyle = EDGE_STYLE.get(style);
-	ctx.stroke();
+	const line = document.createElementNS(ns, 'line');
+	line.setAttribute('x1', v1[0]);
+	line.setAttribute('y1', v1[1]);
+	line.setAttribute('x2', v2[0]);
+	line.setAttribute('y2', v2[1]);
+	line.setAttribute('stroke-width', 3);
+	line.setAttribute('stroke-linecap', 'round');
+	line.setAttribute('stroke', EDGE_STYLE.get(style));
+	svg.appendChild(line);
 }
 
 function clear_highlights_and_draw() {
@@ -481,7 +492,7 @@ function clear_highlights_and_draw() {
 function on_move(e) {
 	const pos = mousePosition(e);
 	const old_closest_diag = closest_diag;
-	let min_distance = segment_to_point_distance([0, n-1], pos); // use distance from the segment instead of distance from its midpoint?
+	let min_distance = segment_to_point_distance([0, n-1], pos);
 	closest_diag = null;
 	for (let i = 0; i < n-1; i++) {
 		min_distance = Math.min(min_distance, segment_to_point_distance([i, i+1], pos));
@@ -549,21 +560,20 @@ function altitude(p, u, v) {
 }
 
 function mousePosition(e) {
-	const box = e.target.getBoundingClientRect();
+	const box = svg.getBoundingClientRect();
 	return [e.clientX - box.left, e.clientY - box.top];
 }
 
 function init_once() {
-	canvas = document.getElementById('canvas');
-	ctx = canvas.getContext('2d');
+	svg = document.getElementById('triangulation');
 	itinerary_table = document.getElementById('itinerary');
 	frieze_table = document.getElementById('frieze');
 	cluster_vars_table = document.getElementById('clustervars');
 	cluster_vars_text = document.getElementById('clustervars-text');
 	init();
-	canvas.addEventListener('mousemove', on_move);
-	canvas.addEventListener('mouseup', on_click);
-	canvas.addEventListener('contextmenu', e => e.preventDefault());
+	svg.addEventListener('mousemove', on_move);
+	svg.addEventListener('mouseup', on_click);
+	svg.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
 }
 
 window.addEventListener('load', init_once);
