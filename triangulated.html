@@ -78,6 +78,8 @@ Triangulations and friezes
 
 <p>The itinerary of the corresponding path in the Farey graph, i.e. the counts of the triangles at each vertex, is shown to the right of the picture. Click on a <b>1</b> button to insert a 1 into the itinerary, which corresponds to attaching a triangle to a side of the triangulation, or click on a <b>x</b> button to remove a 1 from the itinerary, which corresponds to removing an external triangle from the triangulation. One possible choice of the vertices of the path in the Farey graph is shown below the corresponding itinerary entries.</p>
 
+<p>That path in the Farey graph together with the edges in its interior is shown as the sequence of hyperbolic lines in the upper half-plane model of the hyperbolic plane. Superimposed are the corresponding Ford circles. When the path has even length, the circles' radii can be alternatingly multiplied by a positive factor preserving their tangencies; move the slider to see this.</p>
+
 <p>There is a tame integer frieze corresponding to the triangulation<span class="negative"> with prescribed signs of diagonals</span>. The fundamental domain of that frieze under the action of its glide reflection symmetry is shown. Every entry in the frieze corresponds to a pair of vertices in the triangulation, hover or tap to highlight the corresponding diagonal. The entries corresponding to the diagonals in the triangulation (all equal to 1<span class="negative"> for positive diagonals or −1 for negative diagonals</span>) have shaded background; these entries also correspond to the initial cluster variables, see below. The quiddity of the frieze (i.e. the row right below the row of 1s) is equal to the itinerary of the triangulation<span class="negative"> if all diagonals are positive</span>. <span class="negative">An integer frieze with negative entries still corresponds to some path in the Farey graph. That path has itinerary and vertices different from the ones shown, however they still can be read out directly from the frieze itself.</span></p>
 
 <p>Every pair of vertices in the triangulated <i class="math">n</i>-gon also corresponds to a cluster variable in the cluster algebra of type <span class="math"><i>A</i><sub><i>n</i>−3</sub></span>. The triangulation defines a particular choice of initial cluster variables. All cluster variables are shown in the bottom part of the page. Again, the corresponding diagonal in the picture is highlighted upon hover or tap, and the list of the initial cluster variables <i class="math">x<sub>i</sub></i> is additionally given for convenience. The entries of the frieze are obtained by evaluating the corresponding cluster variables at <span class="math"><i>x<sub>i</sub></i> = 1</span><span class="negative"> or <span class="math">−1</span></span>, so the entire frieze can be restored from these values only.</p>
@@ -93,7 +95,10 @@ Triangulations and friezes
     <div style="display: block;">
 	<table id="itinerary" class="itinerary"></table>
     </div>
-    <div style="display: block; margin-top: 100px;">
+    <div style="display: block;">
+	<svg id="farey" width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div style="display: block;">
 	<table id="frieze" class="frieze"></table>
     </div>
   </div>

@@ -1,11 +1,13 @@
 'use strict';
 
-let svg, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
+let svg, svg_farey, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
 let vx, closest_diag, highlighted_vertex, highlighted_diag;
 let negative_text_hidden = true;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1]); // the itinerary 1, n-2, 1, 2, 2, 2...
-let itinerary = null, cluster_vars;
+let itinerary = null, farey_path, cluster_vars;
+let ford_circle_factor = 1, ford_circles, ford_line, ford_slider, ford_slider_pressed = false;
+const h_origin = [50, 200]; let h_scale;
 const ns = 'http://www.w3.org/2000/svg';
 
 function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
@@ -20,6 +22,7 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 	}
 	clear_highlights_and_draw();
 	render_itinerary();
+	draw_farey();
 	render_frieze();
 	render_cluster_vars();
 //	console.log(itinerary);
@@ -33,6 +36,7 @@ function set_itinerary_from_diags() {
 function render_itinerary() {
 	const cells = [], cells_x = [], cells_f = [];
 	let farey_edge = [[0, 1], [-1, 0]];
+	farey_path = [];
 	for (const [i, u] of itinerary.entries()) {
 		const iti_entry = document.createElement('td');
 		iti_entry.appendChild(document.createTextNode(u));
@@ -81,6 +85,7 @@ function render_itinerary() {
 			document.createElement('td')
 		);
 		farey_edge = matrix_product(farey_edge, [[0, -1], [1, u]]);
+		farey_path.push([farey_edge[0][0], farey_edge[1][0]]);
 		const f_cell = document.createElement('td');
 		f_cell.innerHTML = `<span class="frac"><sup class="num">${farey_edge[0][0]}</sup><span class="hidden"> &frasl; </span><sub class="den">${farey_edge[1][0]}</sub></span>`.replaceAll('-', '−');
 		f_cell.classList.add('farey-fraction');
@@ -244,6 +249,7 @@ function itinerary_insert_1(i) {
 		}
 		diags.push([[i, (i+2)%n], 1]);
 	}
+	ford_circle_factor = 1;
 	init();
 }
 
@@ -263,6 +269,7 @@ function itinerary_delete_1(i) {
 		}
 	}
 	diags = diags.filter(d => !(d[0][0] === i1 && d[0][1] === i2 || d[0][0] === i2 && d[0][1] === i1));
+	ford_circle_factor = 1;
 	init();
 }
 
@@ -410,6 +417,148 @@ function calculate_cluster_vars() {
 //	cluster_vars.forEach(row => console.log(row.map(cv => cv === null ? '1' : cv.latex()).join(',  ')));
 }
 
+const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray';
+
+function draw_farey() { // farey_path is assumed to be defined
+	const m = farey_path[1][0]; // position of the rightmost circle
+	h_scale = m <= 3 ? 100 : 350 / (m + 0.5);
+	svg_farey.replaceChildren();
+	const line = document.createElementNS(ns, 'line'); // real axis
+	line.setAttribute('x1', 0);
+	line.setAttribute('y1', h_origin[1]);
+	line.setAttribute('x2', 400);
+	line.setAttribute('y2', h_origin[1]);
+	line.setAttribute('stroke', 'black');
+	svg_farey.appendChild(line);
+	ford_circles = [];
+	for (let i = 0; i < n; i++) {
+		draw_ford_circle(farey_path[i], i % 2);
+		for (let j = 0; j < i; j++) {
+			if (Math.abs(farey_path[i][0] * farey_path[j][1] - farey_path[i][1] * farey_path[j][0]) == 1) {
+				draw_farey_edge(farey_path[i], farey_path[j]);
+			}
+		}
+	}
+	if (n % 2 == 0) {
+		const [cx, cy] = h_rescale(0, 1);
+		ford_slider = document.createElementNS(ns, 'circle');
+		ford_slider.setAttribute('r', 0.1 * h_scale);
+		ford_slider.setAttribute('cx', cx);
+		ford_slider.setAttribute('stroke', 'black');
+		ford_slider.setAttribute('stroke-width', 0.03 * h_scale);
+		ford_slider.setAttribute('fill', FORD_SLIDER_FILL);
+		svg_farey.appendChild(ford_slider);
+		ford_slider.addEventListener('pointerdown', e => {
+			ford_slider_pressed = true;
+			ford_slider.setAttribute('fill', FORD_SLIDER_FILL_ACTIVE);
+			ford_slider.setPointerCapture(e.pointerId);
+		});
+		ford_slider.addEventListener('pointerup', e => {
+			ford_slider_pressed = false;
+			ford_slider.setAttribute('fill', FORD_SLIDER_FILL);
+		});
+		ford_slider.addEventListener('pointermove', e => {
+			if (!ford_slider_pressed) {
+				return;
+			}
+			const [px, py] = mousePosition(svg_farey, e);
+			ford_circle_factor = Math.max((h_origin[1] - Math.max(py, 3)) / h_scale, 0.1);
+			update_ford_circles();
+		});
+		ford_slider.addEventListener('contextmenu', e => {
+			e.preventDefault();
+			ford_circle_factor = 1;
+			update_ford_circles();
+		});
+	} else {
+		ford_slider = null;
+	}
+	update_ford_circles();
+}
+
+function draw_ford_circle(ff, odd) {
+	const [p, q] = ff;
+	if (q == 0) {
+		const y = h_origin[1] - h_scale;
+		ford_line = document.createElementNS(ns, 'line');
+		ford_line.setAttribute('x1', 0);
+//		ford_line.setAttribute('y1', y);
+		ford_line.setAttribute('x2', 400);
+//		ford_line.setAttribute('y2', y);
+		ford_line.setAttribute('stroke', FORD_STROKE);
+		svg_farey.appendChild(ford_line);
+		return;
+	}
+	const [x, r] = [p/q, 1/(2*q*q)];
+	const [cx, cy] = h_rescale(x, r);
+	const c = document.createElementNS(ns, 'circle');
+	c.setAttribute('cx', cx);
+//    c.setAttribute('cy', cy);
+//    c.setAttribute('r', r * h_scale);
+	c.setAttribute('stroke', FORD_STROKE);
+	c.setAttribute('fill', 'none');
+	svg_farey.appendChild(c);
+	ford_circles.push([c, r, odd]);
+	// add labels?
+//    const [tx, ty] = h_rescale(x, -r*1.5);
+//    const txt = document.createElementNS(ns, 'text');
+//    txt.setAttribute('x', tx);
+//    txt.setAttribute('y', ty);
+//    txt.setAttribute('font-size', `${h_scale/(q*q)}px`);
+//    txt.appendChild(document.createTextNode(q));
+//    txt.innerHTML = `<span class="frac"><sup class="num">${p}</sup><span class="hidden"> &frasl; </span><sub class="den">${q}</sub></span>`.replaceAll('-', '−');
+//    svg_farey.appendChild(txt);
+}
+
+function update_ford_circles() {
+	const y = h_origin[1] - h_scale * ford_circle_factor;
+	ford_line.setAttribute('y1', y);
+	ford_line.setAttribute('y2', y);
+	for (let [c, r, odd] of ford_circles) {
+		if (odd) {
+			r *= ford_circle_factor;
+		} else {
+			r /= ford_circle_factor;
+		}
+		const [cx, cy] = h_rescale(0, r);
+		c.setAttribute('cy', cy);
+		c.setAttribute('r', r * h_scale);
+	}
+	if (ford_slider) {
+		ford_slider.setAttribute('cy', y);
+	}
+}
+
+function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (possibly 1/0)
+	const [p1, q1] = ff1;
+	const [p2, q2] = ff2;
+	const f1 = p1 / q1;
+	if (q2 == 0) {
+		const [x, y] = h_rescale(f1, 0);
+		const line = document.createElementNS(ns, 'line');
+		line.setAttribute('x1', x);
+		line.setAttribute('y1', y);
+		line.setAttribute('x2', x);
+		line.setAttribute('y2', 0);
+		line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		svg_farey.appendChild(line);
+		return;
+	}
+	const f2 = p2 / q2;
+	const [x1, y1] = h_rescale(f1, 0);
+	const [x2, y2] = h_rescale(f2, 0);
+	const r = (f2 - f1) / 2;
+	const arc = document.createElementNS(ns, 'path');
+	arc.setAttribute('d', `M${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2}`);
+	arc.setAttribute('stroke', FAREY_EDGE_STROKE);
+	arc.setAttribute('fill', 'none');
+	svg_farey.appendChild(arc);
+}
+
+function h_rescale(x, y) {
+	return [h_origin[0] + x * h_scale, h_origin[1] - y * h_scale];
+}
+
 const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
    [ 1, 'black'],
    [-1, '#D000D0'],
@@ -490,7 +639,7 @@ function clear_highlights_and_draw() {
 }
 
 function on_move(e) {
-	const pos = mousePosition(e);
+	const pos = mousePosition(svg, e);
 	const old_closest_diag = closest_diag;
 	let min_distance = segment_to_point_distance([0, n-1], pos);
 	closest_diag = null;
@@ -559,13 +708,14 @@ function altitude(p, u, v) {
 	return Math.abs((u[0]-p[0])*(v[1]-p[1]) - (u[1]-p[1])*(v[0]-p[0])) / eud(u, v);
 }
 
-function mousePosition(e) {
-	const box = svg.getBoundingClientRect();
+function mousePosition(o, e) {
+	const box = o.getBoundingClientRect();
 	return [e.clientX - box.left, e.clientY - box.top];
 }
 
 function init_once() {
 	svg = document.getElementById('triangulation');
+	svg_farey = document.getElementById('farey');
 	itinerary_table = document.getElementById('itinerary');
 	frieze_table = document.getElementById('frieze');
 	cluster_vars_table = document.getElementById('clustervars');
@@ -576,4 +726,4 @@ function init_once() {
 	svg.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
 }
 
-window.addEventListener('load', init_once);
+window.addEventListener('DOMContentLoaded', init_once);
