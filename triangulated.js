@@ -1,13 +1,13 @@
 'use strict';
 
-let svg, svg_farey, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
+let svg, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
 let vx, closest_diag, highlighted_vertex, highlighted_diag;
 let negative_text_hidden = true;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1]); // the itinerary 1, n-2, 1, 2, 2, 2...
 let itinerary = null, farey_path, cluster_vars;
-let ford_circle_factor = 1, ford_circles, ford_line, ford_slider, ford_slider_pressed = false;
-const h_origin = [50, 200]; let h_scale;
+let ford_circle_factor = 1, ford_circles, ford_circles_disk, ford_line, ford_slider, ford_slider_pressed = false;
+const h_origin = [50, 200]; let h_scale; const disk_r = 120; let disk_origin;
 const ns = 'http://www.w3.org/2000/svg';
 
 function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
@@ -21,7 +21,7 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 		set_itinerary_from_diags();
 	}
 	clear_highlights_and_draw();
-	render_itinerary();
+	render_dissected_polygon();
 	draw_farey();
 	render_frieze();
 	render_cluster_vars();
@@ -33,7 +33,7 @@ function set_itinerary_from_diags() {
 	itinerary = Array.from(vx, (_, i) => diags.filter(d => d[0][0] === i || d[0][1] === i).length + 1);
 }
 
-function render_itinerary() {
+function render_dissected_polygon() {
 	const cells = [], cells_x = [], cells_f = [];
 	let farey_edge = [[0, 1], [-1, 0]];
 	farey_path = [];
@@ -417,20 +417,30 @@ function calculate_cluster_vars() {
 //	cluster_vars.forEach(row => console.log(row.map(cv => cv === null ? '1' : cv.latex()).join(',  ')));
 }
 
-const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray';
+const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray', H_BOUNDARY_STROKE = 'black';
 
 function draw_farey() { // farey_path is assumed to be defined
 	const m = farey_path[1][0]; // position of the rightmost circle
 	h_scale = m <= 3 ? 100 : 350 / (m + 0.5);
 	svg_farey.replaceChildren();
+	svg_farey_disk.replaceChildren();
 	const line = document.createElementNS(ns, 'line'); // real axis
 	line.setAttribute('x1', 0);
 	line.setAttribute('y1', h_origin[1]);
 	line.setAttribute('x2', 400);
 	line.setAttribute('y2', h_origin[1]);
-	line.setAttribute('stroke', 'black');
+	line.setAttribute('stroke', H_BOUNDARY_STROKE);
 	svg_farey.appendChild(line);
+	disk_origin = [svg_farey_disk.getAttribute('width') - disk_r - 50, svg_farey_disk.getAttribute('height') / 2];
+	const disk_boundary = document.createElementNS(ns, 'circle'); // real axis
+	disk_boundary.setAttribute('cx', disk_origin[0]);
+	disk_boundary.setAttribute('cy', disk_origin[1]);
+	disk_boundary.setAttribute('r', disk_r);
+	disk_boundary.setAttribute('stroke', H_BOUNDARY_STROKE);
+	disk_boundary.setAttribute('fill', 'none');
+	svg_farey_disk.appendChild(disk_boundary);
 	ford_circles = [];
+	ford_circles_disk = [];
 	for (let i = 0; i < n; i++) {
 		draw_ford_circle(farey_path[i], i % 2);
 		for (let j = 0; j < i; j++) {
@@ -487,18 +497,17 @@ function draw_ford_circle(ff, odd) {
 //		ford_line.setAttribute('y2', y);
 		ford_line.setAttribute('stroke', FORD_STROKE);
 		svg_farey.appendChild(ford_line);
-		return;
-	}
-	const [x, r] = [p/q, 1/(2*q*q)];
-	const [cx, cy] = h_rescale(x, r);
-	const c = document.createElementNS(ns, 'circle');
-	c.setAttribute('cx', cx);
+	} else {
+		const [x, r] = [p/q, 1/(2*q*q)];
+		const [cx, cy] = h_rescale(x, r);
+		const c = document.createElementNS(ns, 'circle');
+		c.setAttribute('cx', cx);
 //    c.setAttribute('cy', cy);
 //    c.setAttribute('r', r * h_scale);
-	c.setAttribute('stroke', FORD_STROKE);
-	c.setAttribute('fill', 'none');
-	svg_farey.appendChild(c);
-	ford_circles.push([c, r, odd]);
+		c.setAttribute('stroke', FORD_STROKE);
+		c.setAttribute('fill', 'none');
+		svg_farey.appendChild(c);
+		ford_circles.push([c, r, odd]);
 	// add labels?
 //    const [tx, ty] = h_rescale(x, -r*1.5);
 //    const txt = document.createElementNS(ns, 'text');
@@ -508,6 +517,12 @@ function draw_ford_circle(ff, odd) {
 //    txt.appendChild(document.createTextNode(q));
 //    txt.innerHTML = `<span class="frac"><sup class="num">${p}</sup><span class="hidden"> &frasl; </span><sub class="den">${q}</sub></span>`.replaceAll('-', '−');
 //    svg_farey.appendChild(txt);
+	}
+	const cd = document.createElementNS(ns, 'circle');
+	cd.setAttribute('stroke', FORD_STROKE);
+	cd.setAttribute('fill', 'none');
+	svg_farey_disk.appendChild(cd);
+	ford_circles_disk.push([cd, disk_pq2xy(p, q), 1/(p*p+q*q), odd]);
 }
 
 function update_ford_circles() {
@@ -527,11 +542,43 @@ function update_ford_circles() {
 	if (ford_slider) {
 		ford_slider.setAttribute('cy', y);
 	}
+	for (let [c, xy, f, odd] of ford_circles_disk) {
+		if (odd) {
+			f *= ford_circle_factor;
+		} else {
+			f /= ford_circle_factor;
+		}
+		const [x, y] = xy;
+		const c_factor = 1 / (1 + f);
+		const [cx, cy] = disk_position(x * c_factor, y * c_factor);
+		c.setAttribute('cx', cx);
+		c.setAttribute('cy', cy);
+		c.setAttribute('r', disk_r * (1 - c_factor));
+	}
 }
 
 function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (possibly 1/0)
 	const [p1, q1] = ff1;
 	const [p2, q2] = ff2;
+	const [x1d, y1d] = disk_pq2xy(p1, q1);
+	const [x2d, y2d] = disk_pq2xy(p2, q2);
+	const [dp1, dp2] = [disk_position(x1d, y1d), disk_position(x2d, y2d)];
+	if (x1d + x2d == 0) {
+		const line = document.createElementNS(ns, 'line');
+		line.setAttribute('x1', dp1[0]);
+		line.setAttribute('y1', dp1[1]);
+		line.setAttribute('x2', dp2[0]);
+		line.setAttribute('y2', dp2[1]);
+		line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		svg_farey_disk.appendChild(line);
+	} else {
+		const arc_r = disk_r * (y1d - y2d) / (x1d + x2d);
+		const arc_d = document.createElementNS(ns, 'path');
+		arc_d.setAttribute('d', `M${dp1[0]},${dp1[1]} A${arc_r},${arc_r} 0 0,1 ${dp2[0]},${dp2[1]}`);
+		arc_d.setAttribute('stroke', FAREY_EDGE_STROKE);
+		arc_d.setAttribute('fill', 'none');
+		svg_farey_disk.appendChild(arc_d);
+	}
 	const f1 = p1 / q1;
 	if (q2 == 0) {
 		const [x, y] = h_rescale(f1, 0);
@@ -555,8 +602,21 @@ function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (
 	svg_farey.appendChild(arc);
 }
 
+function disk_pq2xy(p, q) {
+	const ns = p*p + q*q;
+	return [2*p*q/ns, (p*p-q*q)/ns];
+}
+
 function h_rescale(x, y) {
-	return [h_origin[0] + x * h_scale, h_origin[1] - y * h_scale];
+	return u_rescale(x, y, h_origin, h_scale);
+}
+
+function disk_position(x, y) {
+	return u_rescale(x, y, disk_origin, disk_r);
+}
+
+function u_rescale(x, y, o, r) {
+	return [o[0] + x * r, o[1] - y * r];
 }
 
 const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
@@ -716,6 +776,7 @@ function mousePosition(o, e) {
 function init_once() {
 	svg = document.getElementById('triangulation');
 	svg_farey = document.getElementById('farey');
+	svg_farey_disk = document.getElementById('farey_disk');
 	itinerary_table = document.getElementById('itinerary');
 	frieze_table = document.getElementById('frieze');
 	cluster_vars_table = document.getElementById('clustervars');
