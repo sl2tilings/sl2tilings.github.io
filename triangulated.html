@@ -38,6 +38,9 @@ table.frieze > tr > td.frieze-entry-one {
 	background-color: WhiteSmoke;
 }
 table.frieze > tr > td.frieze-entry-shmaurent {
+	background-color: PaleGreen;
+}
+table.frieze > tr > td.frieze-entry-frozen {
 	border-color: black;
 }
 span.frac { /* inspired by stackoverflow.com/a/41679399 */
@@ -74,7 +77,7 @@ Triangulations and friezes
 
 <p>This is a demonstration of the connections between triangulated polygons, paths in the Farey graph, Conway&ndash;Coxeter friezes, and cluster variables. For the background infromation on this, see <a href="research.html">our research</a> and references therein.</p>
 
-<p>The picture shows a polygon dissected into triangles, i.e. a triangulation. There are two ways to modify the triangulation: the first is by left-clicking on a diagonal to flip it; the second is using the itinerary. <span class="negative">Right-click to make the diagonal <em>negative</em>; this affects the frieze, see below.</span></p>
+<p>The picture shows a polygon dissected into triangles, i.e. a triangulation. There are two ways to modify the triangulation: the first is by left-clicking on a diagonal to flip it; the second is using the itinerary. <span class="negative">A right-click cyclically changes the state of the diagonal to <em>frozen negative</em>, then to <em>frozen positive</em>, then back to regular positive again; this affects the frieze, see below.</span></p>
 
 <p>The itinerary of the corresponding path in the Farey graph, i.e. the counts of the triangles at each vertex, is shown to the right of the picture. Click on a <b>1</b> button to insert a 1 into the itinerary, which corresponds to attaching a triangle to a side of the triangulation, or click on a <b>x</b> button to remove a 1 from the itinerary, which corresponds to removing an external triangle from the triangulation. One possible choice of the vertices of the path in the Farey graph is shown below the corresponding itinerary entries.</p>
 
@@ -84,7 +87,7 @@ Triangulations and friezes
 
 <p>Every pair of vertices in the triangulated <i class="math">n</i>-gon also corresponds to a cluster variable in the cluster algebra of type <span class="math"><i>A</i><sub><i>n</i>−3</sub></span>. The triangulation defines a particular choice of initial cluster variables. All cluster variables are shown in the bottom part of the page. Again, the corresponding diagonal in the picture is highlighted upon hover or tap, and the list of the initial cluster variables <i class="math">x<sub>i</sub></i> is additionally given for convenience. The entries of the frieze are obtained by evaluating the corresponding cluster variables at <span class="math"><i>x<sub>i</sub></i> = 1</span><span class="negative"> or <span class="math">−1</span></span>, so the entire frieze can be restored from these values only.</p>
 
-<p><span class="negative">Cluster variables are known to exhibit the Laurent phenomenon, which in particular means that evaluating them at <span class="math"><i>x<sub>i</sub></i> = 1</span> or <span class="math">−1</span> always results in integer numbers. However when some initial cluster variables are set to be equal to <span class="math">−1</span>, which can be done in this app by making diagonals negative, the <em>Schmaurent phenomenon</em> arises: some of the remaining initial cluster variables are no longer present in the denominators of the Laurent polynomials. Thus, they can be set to be equal to any integer number, still giving integer results upon the evaluation of cluster variables. Although this app can only set such initial cluster variables to <span class="math">1</span>, the entries of the frieze corresponding to them are boxed to indicate that these values can be replaced by any integer, and it would still be possible to restore the entire tame integer frieze from these entries.</span></p>
+<p><span class="negative">Cluster variables are known to exhibit the Laurent phenomenon, which in particular means that evaluating them at <span class="math"><i>x<sub>i</sub></i> = 1</span> or <span class="math">−1</span> always results in integer numbers. However when some initial cluster variables are set to be equal to <span class="math">−1</span> (frozen negative) and some others to <span class="math">1</span> (frozen positive), which can be done in this app by right-clicking on the diagonals (the corresponding frieze entries are then shown boxed), the <em>Shmaurent phenomenon</em> arises: some of the remaining initial cluster variables are no longer present in the denominators of the Laurent polynomials. Thus, they can be set to be equal to any integer number, still giving integer results upon the evaluation of cluster variables. Although this app can only set such initial cluster variables to <span class="math">1</span>, the entries of the frieze corresponding to them are given a coloured background to indicate that these values can be replaced by any integer, and it would still be possible to restore the entire tame integer frieze from these entries.</span></p>
 
 <div class="math">
 <div style="display: flex;">

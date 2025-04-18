@@ -4,7 +4,7 @@ let svg, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_
 let vx, closest_diag, highlighted_vertex, highlighted_diag;
 let negative_text_hidden = true;
 let n = 6;
-let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1]); // the itinerary 1, n-2, 1, 2, 2, 2...
+let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1, false]); // the itinerary 1, n-2, 1, 2, 2, 2...
 let itinerary = null, farey_path, cluster_vars;
 let ford_circle_factor = 1, ford_circles, ford_circles_disk, ford_line, ford_slider, ford_slider_pressed = false;
 const h_origin = [50, 200]; let h_scale; const disk_r = 120; let disk_origin;
@@ -144,14 +144,17 @@ function render_frieze() {
 		}
 		const cell = document.getElementById('fr-' + v1 + '-' + v2);
 		cell.classList.add('frieze-entry-clustervar');
+		if (d[2]) {
+			cell.classList.add('frieze-entry-frozen');
+		}
 		if (not_in_den[i]) {
 			cell.classList.add('frieze-entry-shmaurent');
 		}
 	}
 	for (let i = 0; i < n-1; i++) {
-		document.getElementById('fr-' + (i+1) + '-' + i).classList.add('frieze-entry-one');
+		document.getElementById('fr-' + (i+1) + '-' + i).classList.add('frieze-entry-one', 'frieze-entry-frozen');
 	}
-	document.getElementById('fr-' + (n-1)+ '-0').classList.add('frieze-entry-one');
+	document.getElementById('fr-' + (n-1)+ '-0').classList.add('frieze-entry-one', 'frieze-entry-frozen');
 	for (let v1 = 0; v1 < n; v1++) {
 		for (let v2 = 0; v2 < v1; v2++) {
 			const cell = document.getElementById('fr-' + v1 + '-' + v2);
@@ -247,7 +250,7 @@ function itinerary_insert_1(i) {
 				d[0][1]++;
 			}
 		}
-		diags.push([[i, (i+2)%n], 1]);
+		diags.push([[i, (i+2)%n], 1, false]);
 	}
 	ford_circle_factor = 1;
 	init();
@@ -276,24 +279,34 @@ function itinerary_delete_1(i) {
 function flip(i) { // i is the index of the diagonal to flip
 //	console.log('flipping ' + i);
 	const d = diags.splice(i, 1)[0];
-	const [vertices, sign] = d;
+	const [vertices, sign, is_frozen] = d;
 	const [i1, i2] = vertices;
 	const neighbours = [...Array(n).keys()].filter(i => adjacent(i, i1) && adjacent(i, i2));
 	console.assert(neighbours.length === 2, '%o', {vertices, neighbours});
-	diags.push([neighbours, sign]);
+	diags.push([neighbours, sign, is_frozen]);
 	itinerary = null;
 	init();
 }
 
-function flip_sign(i) {
-	diags[i][1] = -diags[i][1];
-	init();
-	if (negative_text_hidden) {
-		negative_text_hidden = false;
-		for (const e of document.getElementsByClassName('negative')) {
-			e.classList.add('negative-show');
+function right_click_action(i) {
+	// cyclically go from unfrozen 1 to frozen -1 to frozen 1 to unfrozen 1
+	if (diags[i][2]) {
+		if (diags[i][1] === -1) {
+			diags[i][1] = 1;
+		} else {
+			diags[i][2] = false;
+		}
+	} else {
+		diags[i][1] = -1;
+		diags[i][2] = true;
+		if (negative_text_hidden) {
+			negative_text_hidden = false;
+			for (const e of document.getElementsByClassName('negative')) {
+				e.classList.add('negative-show');
+			}
 		}
 	}
+	init();
 }
 
 function adjacent(i1, i2) {
@@ -325,10 +338,10 @@ function calculate_frieze() {
 	}
 	const not_in_den = vars.map(i => true);
 	let nv = not_in_den.length;
-	const vars_neg1 = new Map();
+	const vars_frozen = new Map();
 	for (const [i, d] of diags.entries()) {
-		if (d[1] === -1) {
-			vars_neg1.set(i, -1);
+		if (d[2]) {
+			vars_frozen.set(i, d[1]);
 			not_in_den[i] = false;
 			nv -= 1;
 		}
@@ -341,7 +354,7 @@ function calculate_frieze() {
 			if (nv === 0) {
 				break;
 			}
-			const den = cluster_vars[i][j].evaluate_partially(vars_neg1).den;
+			const den = cluster_vars[i][j].evaluate_partially(vars_frozen).den;
 			for (const [i, e] of den.entries()) {
 				if (not_in_den[i] && e > 0) {
 					not_in_den[i] = false;
@@ -620,8 +633,9 @@ function u_rescale(x, y, o, r) {
 }
 
 const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
-   [ 1, 'black'],
-   [-1, '#D000D0'],
+	['unfrozen', 'slategray'],
+	[ 1, 'black'],
+	[-1, '#D000D0'],
 ]);
 
 function draw() {
@@ -634,7 +648,7 @@ function draw() {
 		}
 	}
 	for (let v = 0; v < n; v++) {
-		draw_edge([[v, (v+1)%n], 1]);
+		draw_edge([[v, (v+1)%n], 1, true]);
 	}
 	for (const dd of diags.values()) {
 		draw_edge(dd);
@@ -677,7 +691,8 @@ function draw_highlight(i1, i2) { // [i1, i2] and highlighted_diag are always in
 }
 
 function draw_edge(data) {
-	const [vertices, style] = data;
+	const [vertices, value, is_frozen] = data;
+	const style = (is_frozen ? value : 'unfrozen');
 	const [i1, i2] = vertices;
 	const [v1, v2] = [vx[i1], vx[i2]];
 	const line = document.createElementNS(ns, 'line');
@@ -735,7 +750,7 @@ function on_click(e) {
 	if (e.which === 1) {
 		flip(closest_diag);
 	} else if (e.which === 3) {
-		flip_sign(closest_diag);
+		right_click_action(closest_diag);
 	}
 	on_move(e); // needed for highlighting
 }
