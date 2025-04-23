@@ -354,7 +354,8 @@ function calculate_frieze() {
 			if (nv === 0) {
 				break;
 			}
-			const den = cluster_vars[i][j].evaluate_partially(vars_frozen).den;
+			cluster_vars[i][j] = cluster_vars[i][j].evaluate_partially(vars_frozen);
+			const den = cluster_vars[i][j].den;
 			for (const [i, e] of den.entries()) {
 				if (not_in_den[i] && e > 0) {
 					not_in_den[i] = false;

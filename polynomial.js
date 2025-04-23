@@ -144,6 +144,9 @@ class LaurentPolynomial {
 	}
 	
 	latex() {
+		if (this.num_terms.size === 0) {
+			return '0';
+		}
 		let s = '';
 		let plus = false;
 		for (const [e, c] of this.num_terms.entries()) {
@@ -158,6 +161,9 @@ class LaurentPolynomial {
 	}
 	
 	html() {
+		if (this.num_terms.size === 0) {
+			return '0';
+		}
 		let s = '';
 		let plus = false;
 		for (const [e, c] of this.num_terms.entries()) {
