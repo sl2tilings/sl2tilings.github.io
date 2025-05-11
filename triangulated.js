@@ -87,6 +87,7 @@ function render_dissected_polygon() {
 		farey_edge = matrix_product(farey_edge, [[0, -1], [1, u]]);
 		farey_path.push([farey_edge[0][0], farey_edge[1][0]]);
 		const f_cell = document.createElement('td');
+		f_cell.setAttribute('id', 'f_cell-' + i);
 		f_cell.innerHTML = `<span class="frac"><sup class="num">${farey_edge[0][0]}</sup><span class="hidden"> &frasl; </span><sub class="den">${farey_edge[1][0]}</sub></span>`.replaceAll('-', '−');
 		f_cell.classList.add('farey-fraction');
 		f_cell.addEventListener('mouseover', function () {
@@ -633,6 +634,13 @@ function u_rescale(x, y, o, r) {
 	return [o[0] + x * r, o[1] - y * r];
 }
 
+function neg_diags() {
+	for (const [d, l, f] of diags) {
+		if (l !== 1) return true;
+	}
+	return false;
+}
+
 const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
 	['unfrozen', 'slategray'],
 	[ 1, 'black'],
@@ -640,11 +648,22 @@ const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
 ]);
 
 function draw() {
+	for (let v = 0; v < n; v++) {
+		const f_cell = document.getElementById('f_cell-' + v);
+		if (f_cell === null) break;
+		f_cell.classList.remove('highlighted');
+	}
 	svg.replaceChildren();
 	if (highlighted_diag !== null) {
 		for (let v1 = 1; v1 < n; v1++) {
 			for (let v2 = 0; v2 < v1; v2++) {
 				draw_highlight(v1, v2);
+			}
+		}
+		if (!neg_diags()) {
+			for (const v of highlighted_diag) {
+				const f_cell = document.getElementById('f_cell-' + v);
+				f_cell.classList.add('highlighted');
 			}
 		}
 	}
