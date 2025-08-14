@@ -1,7 +1,7 @@
 'use strict';
 
-let svg, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
-let vx, closest_diag, highlighted_vertex, highlighted_diag;
+let svg_polygon, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
+let vx, closest_diag, highlighted_vertex = null, highlighted_diag = null;
 let negative_text_hidden = true;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1, false]); // the itinerary 1, n-2, 1, 2, 2, 2...
@@ -12,7 +12,7 @@ const ns = 'http://www.w3.org/2000/svg';
 
 function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
 	vx = [...Array(n).keys()].map(i => {
-		const [cx, cy] = [svg.getAttribute('width') / 2, svg.getAttribute('height') / 2];
+		const [cx, cy] = [svg_polygon.getAttribute('width') / 2, svg_polygon.getAttribute('height') / 2];
 		const r = cy - 10;
 		const a = Math.PI * (2.0 * i / n - 0.5);
 		return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
@@ -20,8 +20,9 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 	if (itinerary === null) {
 		set_itinerary_from_diags();
 	}
-	clear_highlights_and_draw();
-	render_dissected_polygon();
+	clear_highlights();
+	draw_polygon();
+	render_fractions();
 	draw_farey();
 	render_frieze();
 	render_cluster_vars();
@@ -33,7 +34,7 @@ function set_itinerary_from_diags() {
 	itinerary = Array.from(vx, (_, i) => diags.filter(d => d[0][0] === i || d[0][1] === i).length + 1);
 }
 
-function render_dissected_polygon() {
+function render_fractions() {
 	const cells = [], cells_x = [], cells_f = [];
 	let farey_edge = [[0, 1], [-1, 0]];
 	farey_path = [];
@@ -41,11 +42,8 @@ function render_dissected_polygon() {
 		const iti_entry = document.createElement('td');
 		iti_entry.appendChild(document.createTextNode(u));
 		iti_entry.classList.add('itinerary-entry');
-		iti_entry.addEventListener('mouseover', function () {
-			highlighted_vertex = i;
-			draw();
-		});
-		iti_entry.addEventListener('mouseout', clear_highlights_and_draw);
+		iti_entry.addEventListener('mouseover', () => highlight_vertex(i));
+		iti_entry.addEventListener('mouseout', clear_highlights);
 		const b1 = document.createElement('button');
 		b1.classList.add('itinerary-button');
 		b1.appendChild(document.createTextNode('1'));
@@ -55,11 +53,8 @@ function render_dissected_polygon() {
 		});
 		const button_cell = document.createElement('td');
 		button_cell.appendChild(b1);
-		button_cell.addEventListener('mouseover', function () {
-			highlighted_diag = (i === n-1 ? [i, 0] : [i+1, i]);
-			draw();
-		});
-		button_cell.addEventListener('mouseout', clear_highlights_and_draw);
+		button_cell.addEventListener('mouseover', () => highlight_edge(i === n-1 ? [i, 0] : [i+1, i]));
+		button_cell.addEventListener('mouseout', clear_highlights);
 		cells.push(
 			iti_entry,
 			button_cell
@@ -73,11 +68,8 @@ function render_dissected_polygon() {
 			bx.addEventListener('click', function (e) {
 				itinerary_delete_1(i);
 			});
-			x_cell.addEventListener('mouseover', function () {
-				highlighted_vertex = i;
-				draw();
-			});
-			x_cell.addEventListener('mouseout', clear_highlights_and_draw);
+			x_cell.addEventListener('mouseover', () => highlight_vertex(i));
+			x_cell.addEventListener('mouseout', clear_highlights);
 			x_cell.appendChild(bx);
 		}
 		cells_x.push(
@@ -90,11 +82,8 @@ function render_dissected_polygon() {
 		f_cell.setAttribute('id', 'f_cell-' + i);
 		f_cell.innerHTML = `<span class="frac"><sup class="num">${farey_edge[0][0]}</sup><span class="hidden"> &frasl; </span><sub class="den">${farey_edge[1][0]}</sub></span>`.replaceAll('-', '−');
 		f_cell.classList.add('farey-fraction');
-		f_cell.addEventListener('mouseover', function () {
-			highlighted_vertex = i;
-			draw();
-		});
-		f_cell.addEventListener('mouseout', clear_highlights_and_draw);
+		f_cell.addEventListener('mouseover', () => highlight_vertex(i));
+		f_cell.addEventListener('mouseout', clear_highlights);
 		cells_f.push(
 			f_cell,
 			document.createElement('td')
@@ -159,18 +148,12 @@ function render_frieze() {
 	for (let v1 = 0; v1 < n; v1++) {
 		for (let v2 = 0; v2 < v1; v2++) {
 			const cell = document.getElementById('fr-' + v1 + '-' + v2);
-			cell.addEventListener('mouseover', function () {
-				highlighted_diag = [v1, v2];
-				draw();
-			});
-			cell.addEventListener('mouseout', clear_highlights_and_draw);
+			cell.addEventListener('mouseover', () => highlight_edge([v1, v2]));
+			cell.addEventListener('mouseout', clear_highlights);
 		}
 		const cell = document.getElementById('fr-' + v1 + '-' + v1);
-		cell.addEventListener('mouseover', function () {
-			highlighted_vertex = v1;
-			draw();
-		});
-		cell.addEventListener('mouseout', clear_highlights_and_draw);
+		cell.addEventListener('mouseover', () => highlight_vertex(v1));
+		cell.addEventListener('mouseout', clear_highlights);
 	}
 }
 
@@ -184,11 +167,8 @@ function render_cluster_vars() { // the table cluster_vars is assumed to be defi
 		}
 		const x = document.createElement('span');
 		x.innerHTML = `<i>x</i><sub>${i+1}</sub>`;
-		x.addEventListener('mouseover', function () {
-			highlighted_diag = [v1, v2];
-			draw();
-		});
-		x.addEventListener('mouseout', clear_highlights_and_draw);
+		x.addEventListener('mouseover', () => highlight_edge([v1, v2]));
+		x.addEventListener('mouseout', clear_highlights);
 		cluster_vars_text.appendChild(x);
 		if (i < n-4) {
 			cluster_vars_text.appendChild(document.createTextNode(', '));
@@ -221,11 +201,8 @@ function render_cluster_vars() { // the table cluster_vars is assumed to be defi
 				continue;
 			}
 			const cell = document.getElementById('cv-' + v1 + '-' + v2);
-			cell.addEventListener('mouseover', function () {
-				highlighted_diag = [v1, v2];
-				draw();
-			});
-			cell.addEventListener('mouseout', clear_highlights_and_draw);
+			cell.addEventListener('mouseover', () => highlight_edge([v1, v2]));
+			cell.addEventListener('mouseout', clear_highlights);
 		}
 	}
 }
@@ -647,24 +624,11 @@ const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
 	[-1, '#D000D0'],
 ]);
 
-function draw() {
-	for (let v = 0; v < n; v++) {
-		const f_cell = document.getElementById('f_cell-' + v);
-		if (f_cell === null) break;
-		f_cell.classList.remove('highlighted');
-	}
-	svg.replaceChildren();
-	if (highlighted_diag !== null) {
-		for (let v1 = 1; v1 < n; v1++) {
-			for (let v2 = 0; v2 < v1; v2++) {
-				draw_highlight(v1, v2);
-			}
-		}
-		if (!neg_diags()) {
-			for (const v of highlighted_diag) {
-				const f_cell = document.getElementById('f_cell-' + v);
-				f_cell.classList.add('highlighted');
-			}
+function draw_polygon() {
+	svg_polygon.replaceChildren();
+	for (let v1 = 1; v1 < n; v1++) {
+		for (let v2 = 0; v2 < v1; v2++) {
+			draw_edge_highlight(v1, v2);
 		}
 	}
 	for (let v = 0; v < n; v++) {
@@ -679,35 +643,20 @@ function draw() {
 }
 
 function draw_vertex(v, vx_i = null) {
-	if (vx_i !== null && vx_i === highlighted_vertex) {
-		const c = document.createElementNS(ns, 'circle');
-		c.setAttribute('cx', v[0]);
-		c.setAttribute('cy', v[1]);
-		c.setAttribute('r', 9);
-		c.setAttribute('fill', HIGHLIGHT_STYLE);
-		svg.appendChild(c);
-	}
+	const hc = document.createElementNS(ns, 'circle');
+	hc.setAttribute('cx', v[0]);
+	hc.setAttribute('cy', v[1]);
+	hc.setAttribute('r', 9);
+	hc.setAttribute('fill', HIGHLIGHT_STYLE);
+	hc.setAttribute('visibility', 'hidden');
+	hc.setAttribute('id', 'pol-vx-hl-'+vx_i);
+	svg_polygon.appendChild(hc);
 	const c = document.createElementNS(ns, 'circle');
 	c.setAttribute('cx', v[0]);
 	c.setAttribute('cy', v[1]);
 	c.setAttribute('r', 5);
 	c.setAttribute('fill', 'black');
-	svg.appendChild(c);
-}
-
-function draw_highlight(i1, i2) { // [i1, i2] and highlighted_diag are always in the descending order
-	if (i1 === highlighted_diag[0] && i2 === highlighted_diag[1]) {
-		const [v1, v2] = [vx[i1], vx[i2]];
-		const line = document.createElementNS(ns, 'line');
-		line.setAttribute('x1', v1[0]);
-		line.setAttribute('y1', v1[1]);
-		line.setAttribute('x2', v2[0]);
-		line.setAttribute('y2', v2[1]);
-		line.setAttribute('stroke-width', 7);
-		line.setAttribute('stroke-linecap', 'round');
-		line.setAttribute('stroke', HIGHLIGHT_STYLE);
-		svg.appendChild(line);
-	}
+	svg_polygon.appendChild(c);
 }
 
 function draw_edge(data) {
@@ -723,18 +672,79 @@ function draw_edge(data) {
 	line.setAttribute('stroke-width', 3);
 	line.setAttribute('stroke-linecap', 'round');
 	line.setAttribute('stroke', EDGE_STYLE.get(style));
-	svg.appendChild(line);
+	svg_polygon.appendChild(line);
 }
 
-function clear_highlights_and_draw() {
+function draw_edge_highlight(v1, v2) {
+	const [u1, u2] = [vx[v1], vx[v2]];
+	const line = document.createElementNS(ns, 'line');
+	line.setAttribute('x1', u1[0]);
+	line.setAttribute('y1', u1[1]);
+	line.setAttribute('x2', u2[0]);
+	line.setAttribute('y2', u2[1]);
+	line.setAttribute('stroke-width', 7);
+	line.setAttribute('stroke-linecap', 'round');
+	line.setAttribute('stroke', HIGHLIGHT_STYLE);
+	line.setAttribute('visibility', 'hidden');
+	line.setAttribute('id', 'pol-edge-hl-'+v1+'-'+v2);
+	svg_polygon.appendChild(line);
+}
+
+function clear_highlights() {
 	closest_diag = null;
-	highlighted_vertex = null;
-	highlighted_diag = null;
-	draw();
+	highlight_edge();
+	highlight_vertex();
+}
+
+function highlight_edge(e = null) {
+	if (highlighted_diag === null && e === null ||
+		highlighted_diag !== null && e !== null &&
+		highlighted_diag[0] === e[0] && highlighted_diag[1] === e[1])
+		return;
+	if (highlighted_diag !== null) {
+		set_edge_highlighting(highlighted_diag, false);
+	}
+	if (e !== null) {
+		set_edge_highlighting(e, true);
+	}
+	highlighted_diag = e;
+}
+
+function set_edge_highlighting(e, h) {
+	const [v1, v2] = e;
+	const edge = document.getElementById('pol-edge-hl-'+v1+'-'+v2);
+	console.assert(edge, '%o', {e});
+	edge.setAttribute('visibility', h ? 'visible' : 'hidden');
+	if (!neg_diags()) {
+		for (const v of e) {
+			const f_cell = document.getElementById('f_cell-' + v);
+			if (h) {
+				f_cell.classList.add('highlighted');
+			} else {
+				f_cell.classList.remove('highlighted');
+			}
+		}
+	}
+}
+
+function highlight_vertex(v = null) {
+	if (highlighted_vertex === v) return;
+	if (highlighted_vertex !== null) {
+		set_vertex_highlighting(highlighted_vertex, false);
+	}
+	if (v !== null) {
+		set_vertex_highlighting(v, true);
+	}
+	highlighted_vertex = v;
+}
+
+function set_vertex_highlighting(v, h) {
+	const vertex = document.getElementById('pol-vx-hl-'+v);
+	vertex.setAttribute('visibility', h ? 'visible' : 'hidden');
 }
 
 function on_move(e) {
-	const pos = mousePosition(svg, e);
+	const pos = mousePosition(svg_polygon, e);
 	const old_closest_diag = closest_diag;
 	let min_distance = segment_to_point_distance([0, n-1], pos);
 	closest_diag = null;
@@ -749,17 +759,13 @@ function on_move(e) {
 		}
 	}
 	if (closest_diag !== null) {
-		highlighted_diag = diags[closest_diag][0];
-		if (highlighted_diag[0] < highlighted_diag[1]) {
-			highlighted_diag.reverse();
+		let t = diags[closest_diag][0];
+		if (t[0] < t[1]) {
+			t.reverse();
 		}
+		highlight_edge(t);
 	} else {
-		highlighted_diag = null;
-	}
-	if (closest_diag !== old_closest_diag) {
-//		console.log(closest_diag, highlighted_diag);
-		draw();
-		// render_frieze() if we also highlight frieze entries corresponding to the diagonals
+		highlight_edge();
 	}
 }
 
@@ -809,7 +815,7 @@ function mousePosition(o, e) {
 }
 
 function init_once() {
-	svg = document.getElementById('triangulation');
+	svg_polygon = document.getElementById('triangulation');
 	svg_farey = document.getElementById('farey');
 	svg_farey_disk = document.getElementById('farey_disk');
 	itinerary_table = document.getElementById('itinerary');
@@ -817,9 +823,9 @@ function init_once() {
 	cluster_vars_table = document.getElementById('clustervars');
 	cluster_vars_text = document.getElementById('clustervars-text');
 	init();
-	svg.addEventListener('mousemove', on_move);
-	svg.addEventListener('mouseup', on_click);
-	svg.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
+	svg_polygon.addEventListener('mousemove', on_move);
+	svg_polygon.addEventListener('mouseup', on_click);
+	svg_polygon.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
 }
 
 window.addEventListener('DOMContentLoaded', init_once);
