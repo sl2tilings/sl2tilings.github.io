@@ -2,7 +2,7 @@
 
 let svg_polygon, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
 let vx, closest_diag, highlighted_vertex = null, highlighted_diag = null;
-let negative_text_hidden = true;
+let negative_text_hidden = true, neg_diags = false;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1, false]); // the itinerary 1, n-2, 1, 2, 2, 2...
 let itinerary = null, farey_path, cluster_vars;
@@ -42,7 +42,7 @@ function render_fractions() {
 		const iti_entry = document.createElement('td');
 		iti_entry.appendChild(document.createTextNode(u));
 		iti_entry.classList.add('itinerary-entry');
-		iti_entry.addEventListener('mouseover', () => highlight_vertex(i));
+		iti_entry.addEventListener('mouseover', () => highlight_vertex(i, true));
 		iti_entry.addEventListener('mouseout', clear_highlights);
 		const b1 = document.createElement('button');
 		b1.classList.add('itinerary-button');
@@ -82,7 +82,7 @@ function render_fractions() {
 		f_cell.setAttribute('id', 'f_cell-' + i);
 		f_cell.innerHTML = `<span class="frac"><sup class="num">${farey_edge[0][0]}</sup><span class="hidden"> &frasl; </span><sub class="den">${farey_edge[1][0]}</sub></span>`.replaceAll('-', '−');
 		f_cell.classList.add('farey-fraction');
-		f_cell.addEventListener('mouseover', () => highlight_vertex(i));
+		f_cell.addEventListener('mouseover', () => highlight_vertex(i, true));
 		f_cell.addEventListener('mouseout', clear_highlights);
 		cells_f.push(
 			f_cell,
@@ -138,7 +138,7 @@ function render_frieze() {
 			cell.classList.add('frieze-entry-frozen');
 		}
 		if (not_in_den[i]) {
-			cell.classList.add('frieze-entry-shmaurent');
+			cell.classList.add('frieze-entry-poly');
 		}
 	}
 	for (let i = 0; i < n-1; i++) {
@@ -157,7 +157,8 @@ function render_frieze() {
 	}
 }
 
-function render_cluster_vars() { // the table cluster_vars is assumed to be defined
+function render_cluster_vars() {
+	console.assert(cluster_vars);
 	cluster_vars_text.replaceChildren();
 	for (const [i, d] of diags.entries()) {
 		let [v1, v2] = d[0];
@@ -166,6 +167,7 @@ function render_cluster_vars() { // the table cluster_vars is assumed to be defi
 			v2 = d[0][0];
 		}
 		const x = document.createElement('span');
+		x.setAttribute('id', 'xx-'+i);
 		x.innerHTML = `<i>x</i><sub>${i+1}</sub>`;
 		x.addEventListener('mouseover', () => highlight_edge([v1, v2]));
 		x.addEventListener('mouseout', clear_highlights);
@@ -283,6 +285,10 @@ function right_click_action(i) {
 				e.classList.add('negative-show');
 			}
 		}
+	}
+	neg_diags = false;
+	for (const [d, l, f] of diags) {
+		if (l !== 1) neg_diags = true;
 	}
 	init();
 }
@@ -411,7 +417,8 @@ function calculate_cluster_vars() {
 
 const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray', H_BOUNDARY_STROKE = 'black';
 
-function draw_farey() { // farey_path is assumed to be defined
+function draw_farey() {
+	console.assert(farey_path);
 	const m = farey_path[1][0]; // position of the rightmost circle
 	h_scale = m <= 3 ? 100 : 350 / (m + 0.5);
 	svg_farey.replaceChildren();
@@ -434,14 +441,14 @@ function draw_farey() { // farey_path is assumed to be defined
 	ford_circles = [];
 	ford_circles_disk = [];
 	for (let i = 0; i < n; i++) {
-		draw_ford_circle(farey_path[i], i % 2);
+		draw_ford_circle(farey_path[i], i);
 		for (let j = 0; j < i; j++) {
-			if (Math.abs(farey_path[i][0] * farey_path[j][1] - farey_path[i][1] * farey_path[j][0]) == 1) {
+			if (Math.abs(farey_path[i][0] * farey_path[j][1] - farey_path[i][1] * farey_path[j][0]) === 1) {
 				draw_farey_edge(farey_path[i], farey_path[j]);
 			}
 		}
 	}
-	if (n % 2 == 0) {
+	if (n % 2 === 0) {
 		const [cx, cy] = h_rescale(0, 1);
 		ford_slider = document.createElementNS(ns, 'circle');
 		ford_slider.setAttribute('r', 0.1 * h_scale);
@@ -478,13 +485,14 @@ function draw_farey() { // farey_path is assumed to be defined
 	update_ford_circles();
 }
 
-function draw_ford_circle(ff, odd) {
+function draw_ford_circle(ff, i) {
+	const odd = i % 2;
 	const [p, q] = ff;
-	if (q == 0) {
+	if (q === 0) {
 		const y = h_origin[1] - h_scale;
 		ford_line = document.createElementNS(ns, 'line');
 		ford_line.setAttribute('x1', 0);
-//		ford_line.setAttribute('y1', y);
+//		ford_line.setAttribute('y1', y); // set later in update_ford_circles
 		ford_line.setAttribute('x2', 400);
 //		ford_line.setAttribute('y2', y);
 		ford_line.setAttribute('stroke', FORD_STROKE);
@@ -492,12 +500,22 @@ function draw_ford_circle(ff, odd) {
 	} else {
 		const [x, r] = [p/q, 1/(2*q*q)];
 		const [cx, cy] = h_rescale(x, r);
+		const hc = document.createElementNS(ns, 'circle');
+		hc.setAttribute('cx', cx);
+		hc.setAttribute('cy', h_origin[1]);
+		hc.setAttribute('r', 5);
+		hc.setAttribute('fill', HIGHLIGHT_STYLE);
+		hc.setAttribute('visibility', 'hidden');
+		hc.setAttribute('id', 'fareyh-vx-hl-'+i);
+		svg_farey.appendChild(hc);
 		const c = document.createElementNS(ns, 'circle');
 		c.setAttribute('cx', cx);
 //    c.setAttribute('cy', cy);
 //    c.setAttribute('r', r * h_scale);
 		c.setAttribute('stroke', FORD_STROKE);
 		c.setAttribute('fill', 'none');
+//		c.addEventListener('mouseover', () => highlight_vertex(i)); // would require fill
+//		c.addEventListener('mouseout', clear_highlights);
 		svg_farey.appendChild(c);
 		ford_circles.push([c, r, odd]);
 	// add labels?
@@ -510,11 +528,21 @@ function draw_ford_circle(ff, odd) {
 //    txt.innerHTML = `<span class="frac"><sup class="num">${p}</sup><span class="hidden"> &frasl; </span><sub class="den">${q}</sub></span>`.replaceAll('-', '−');
 //    svg_farey.appendChild(txt);
 	}
+	const xy = disk_pq2xy(p, q);
+	const dp = disk_position(...xy);
+	const hc = document.createElementNS(ns, 'circle');
+	hc.setAttribute('cx', dp[0]);
+	hc.setAttribute('cy', dp[1]);
+	hc.setAttribute('r', 5);
+	hc.setAttribute('fill', HIGHLIGHT_STYLE);
+	hc.setAttribute('visibility', 'hidden');
+	hc.setAttribute('id', 'fareyd-vx-hl-'+i);
+	svg_farey_disk.appendChild(hc);
 	const cd = document.createElementNS(ns, 'circle');
 	cd.setAttribute('stroke', FORD_STROKE);
 	cd.setAttribute('fill', 'none');
 	svg_farey_disk.appendChild(cd);
-	ford_circles_disk.push([cd, disk_pq2xy(p, q), 1/(p*p+q*q), odd]);
+	ford_circles_disk.push([cd, xy, 1/(p*p+q*q), odd]);
 }
 
 function update_ford_circles() {
@@ -555,7 +583,7 @@ function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (
 	const [x1d, y1d] = disk_pq2xy(p1, q1);
 	const [x2d, y2d] = disk_pq2xy(p2, q2);
 	const [dp1, dp2] = [disk_position(x1d, y1d), disk_position(x2d, y2d)];
-	if (x1d + x2d == 0) {
+	if (x1d + x2d === 0) {
 		const line = document.createElementNS(ns, 'line');
 		line.setAttribute('x1', dp1[0]);
 		line.setAttribute('y1', dp1[1]);
@@ -572,7 +600,7 @@ function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (
 		svg_farey_disk.appendChild(arc_d);
 	}
 	const f1 = p1 / q1;
-	if (q2 == 0) {
+	if (q2 === 0) {
 		const [x, y] = h_rescale(f1, 0);
 		const line = document.createElementNS(ns, 'line');
 		line.setAttribute('x1', x);
@@ -609,13 +637,6 @@ function disk_position(x, y) {
 
 function u_rescale(x, y, o, r) {
 	return [o[0] + x * r, o[1] - y * r];
-}
-
-function neg_diags() {
-	for (const [d, l, f] of diags) {
-		if (l !== 1) return true;
-	}
-	return false;
 }
 
 const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
@@ -696,10 +717,11 @@ function clear_highlights() {
 	highlight_vertex();
 }
 
-function highlight_edge(e = null) {
+function highlight_edge(e = null, only_pos = false) {
 	if (highlighted_diag === null && e === null ||
 		highlighted_diag !== null && e !== null &&
-		highlighted_diag[0] === e[0] && highlighted_diag[1] === e[1])
+		highlighted_diag[0] === e[0] && highlighted_diag[1] === e[1] ||
+		only_pos && neg_diags)
 		return;
 	if (highlighted_diag !== null) {
 		set_edge_highlighting(highlighted_diag, false);
@@ -715,20 +737,19 @@ function set_edge_highlighting(e, h) {
 	const edge = document.getElementById('pol-edge-hl-'+v1+'-'+v2);
 	console.assert(edge, '%o', {e});
 	edge.setAttribute('visibility', h ? 'visible' : 'hidden');
-	if (!neg_diags()) {
+	if (!neg_diags) {
 		for (const v of e) {
-			const f_cell = document.getElementById('f_cell-' + v);
-			if (h) {
-				f_cell.classList.add('highlighted');
-			} else {
-				f_cell.classList.remove('highlighted');
-			}
+			set_cell_highlighting('f_cell-' + v, h);
 		}
+	}
+	set_cell_highlighting('fr-' + v1 + '-' + v2, h);
+	if (v1-v2 > 1 && !(v1 === n-1 && v2 === 0)) {
+		set_cell_highlighting('cv-' + v1 + '-' + v2, h);
 	}
 }
 
-function highlight_vertex(v = null) {
-	if (highlighted_vertex === v) return;
+function highlight_vertex(v = null, only_pos = false) {
+	if (highlighted_vertex === v || only_pos && neg_diags) return;
 	if (highlighted_vertex !== null) {
 		set_vertex_highlighting(highlighted_vertex, false);
 	}
@@ -741,16 +762,38 @@ function highlight_vertex(v = null) {
 function set_vertex_highlighting(v, h) {
 	const vertex = document.getElementById('pol-vx-hl-'+v);
 	vertex.setAttribute('visibility', h ? 'visible' : 'hidden');
+	if (!neg_diags) {
+		if (v !== 0) {
+			document.getElementById('fareyh-vx-hl-'+v).setAttribute('visibility', h ? 'visible' : 'hidden');
+		}
+		document.getElementById('fareyd-vx-hl-'+v).setAttribute('visibility', h ? 'visible' : 'hidden');
+		set_cell_highlighting('f_cell-' + v, h);
+	}
+	set_cell_highlighting('fr-' + v + '-' + v, h);
+}
+
+function set_cell_highlighting(cell_id, h) {
+	const cell = document.getElementById(cell_id);
+	if (h) {
+		cell.classList.add('highlighted');
+	} else {
+		cell.classList.remove('highlighted');
+	}
 }
 
 function on_move(e) {
 	const pos = mousePosition(svg_polygon, e);
 	const old_closest_diag = closest_diag;
 	let min_distance = segment_to_point_distance([0, n-1], pos);
-	closest_diag = null;
+	let closest_side = n-1;
 	for (let i = 0; i < n-1; i++) {
-		min_distance = Math.min(min_distance, segment_to_point_distance([i, i+1], pos));
+		const dist = segment_to_point_distance([i, i+1], pos)
+		if (dist < min_distance) {
+			min_distance = dist;
+			closest_side = i;
+		}
 	}
+	closest_diag = null;
 	for (const d of diags.keys()) {
 		const dist = segment_to_point_distance(diags[d][0], pos);
 		if (dist < min_distance) {
@@ -765,7 +808,7 @@ function on_move(e) {
 		}
 		highlight_edge(t);
 	} else {
-		highlight_edge();
+		highlight_edge(closest_side === n-1 ? [n-1, 0] : [closest_side+1, closest_side]);
 	}
 }
 
@@ -826,6 +869,7 @@ function init_once() {
 	svg_polygon.addEventListener('mousemove', on_move);
 	svg_polygon.addEventListener('mouseup', on_click);
 	svg_polygon.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
+	svg_polygon.addEventListener('mouseout', clear_highlights);
 }
 
 window.addEventListener('DOMContentLoaded', init_once);

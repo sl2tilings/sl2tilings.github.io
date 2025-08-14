@@ -18,7 +18,7 @@ Triangulations and friezes
 	text-align: center;
 }
 .highlighted {
-	background-color: #F0F000;
+	background-color: #F0F000 !important;
 }
 table.itinerary > tr > td {
 	padding-right: 5px;
@@ -40,7 +40,7 @@ table.frieze > tr > td.frieze-entry-clustervar {
 table.frieze > tr > td.frieze-entry-one {
 	background-color: WhiteSmoke;
 }
-table.frieze > tr > td.frieze-entry-shmaurent {
+table.frieze > tr > td.frieze-entry-poly {
 	background-color: PaleGreen;
 }
 table.frieze > tr > td.frieze-entry-frozen {
@@ -90,7 +90,7 @@ Triangulations and friezes
 
 <p>Every pair of vertices in the triangulated <i class="math">n</i>-gon also corresponds to a cluster variable in the cluster algebra of type <span class="math"><i>A</i><sub><i>n</i>−3</sub></span>. The triangulation defines a particular choice of initial cluster variables. All cluster variables are shown in the bottom part of the page. Again, the corresponding diagonal in the picture is highlighted upon hover or tap, and the list of the initial cluster variables <i class="math">x<sub>i</sub></i> is additionally given for convenience. The entries of the frieze are obtained by evaluating the corresponding cluster variables at <span class="math"><i>x<sub>i</sub></i> = 1</span><span class="negative"> or <span class="math">−1</span></span>, so the entire frieze can be restored from these values only.</p>
 
-<p><span class="negative">Cluster variables are known to exhibit the Laurent phenomenon, which in particular means that evaluating them at <span class="math"><i>x<sub>i</sub></i> = 1</span> or <span class="math">−1</span> always results in integer numbers. However when some initial cluster variables are set to be equal to <span class="math">−1</span> (frozen negative) and some others to <span class="math">1</span> (frozen positive), which can be done in this app by right-clicking on the diagonals (the corresponding frieze entries are then shown boxed), the <em>Shmaurent phenomenon</em> arises: some of the remaining initial cluster variables are no longer present in the denominators of the Laurent polynomials. Thus, they can be set to be equal to any integer number, still giving integer results upon the evaluation of cluster variables. Although this app can only set such initial cluster variables to <span class="math">1</span>, the entries of the frieze corresponding to them are given a coloured background to indicate that these values can be replaced by any integer, and it would still be possible to restore the entire tame integer frieze from these entries.</span></p>
+<p><span class="negative">Cluster variables are known to exhibit the Laurent phenomenon, which in particular means that evaluating them at <span class="math"><i>x<sub>i</sub></i> = 1</span> or <span class="math">−1</span> always results in integer numbers. However when some initial cluster variables are set to be equal to <span class="math">−1</span> (frozen negative) and some others to <span class="math">1</span> (frozen positive), which can be done in this app by right-clicking on the diagonals (the corresponding frieze entries are then shown boxed), the <em>polyamorous phenomenon</em> arises: some of the remaining initial cluster variables are no longer present in the denominators of the Laurent polynomials. Thus, they can be set to be equal to any integer number, still giving integer results upon the evaluation of cluster variables. Although this app can only set such initial cluster variables to <span class="math">1</span>, the entries of the frieze corresponding to them are given a coloured background to indicate that these values can be replaced by any integer, and it would still be possible to restore the entire tame integer frieze from these entries.</span></p>
 
 <div class="math">
 <div style="display: flex;">
