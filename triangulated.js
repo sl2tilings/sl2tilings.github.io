@@ -321,29 +321,20 @@ function calculate_frieze() {
 		}
 	}
 	const not_in_den = vars.map(i => true);
-	let nv = not_in_den.length;
 	const vars_frozen = new Map();
 	for (const [i, d] of diags.entries()) {
 		if (d[2]) {
 			vars_frozen.set(i, d[1]);
 			not_in_den[i] = false;
-			nv -= 1;
 		}
 	}
 	for (let i = 2; i < n; i++) {
-		if (nv === 0) {
-			break;
-		}
 		for (let j = (i === n-1 ? 1 : 0); j < i-1; j++) {
-			if (nv === 0) {
-				break;
-			}
 			cluster_vars[i][j] = cluster_vars[i][j].evaluate_partially(vars_frozen);
 			const den = cluster_vars[i][j].den;
 			for (const [i, e] of den.entries()) {
 				if (not_in_den[i] && e > 0) {
 					not_in_den[i] = false;
-					nv -= 1;
 				}
 			}
 		}
