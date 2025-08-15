@@ -20,12 +20,12 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 	if (itinerary === null) {
 		set_itinerary_from_diags();
 	}
-	clear_highlights();
 	draw_polygon();
 	render_fractions();
 	draw_farey();
 	render_frieze();
 	render_cluster_vars();
+	clear_highlights();
 //	console.log(itinerary);
 //	console.log(diags);
 }
@@ -434,6 +434,7 @@ function draw_farey() {
 	for (let i = 0; i < n; i++) {
 		draw_ford_circle(farey_path[i], i);
 		for (let j = 0; j < i; j++) {
+			draw_farey_edge(farey_path[i], farey_path[j], `${i}-${j}`);
 			if (Math.abs(farey_path[i][0] * farey_path[j][1] - farey_path[i][1] * farey_path[j][0]) === 1) {
 				draw_farey_edge(farey_path[i], farey_path[j]);
 			}
@@ -509,15 +510,37 @@ function draw_ford_circle(ff, i) {
 //		c.addEventListener('mouseout', clear_highlights);
 		svg_farey.appendChild(c);
 		ford_circles.push([c, r, odd]);
-	// add labels?
-//    const [tx, ty] = h_rescale(x, -r*1.5);
-//    const txt = document.createElementNS(ns, 'text');
-//    txt.setAttribute('x', tx);
-//    txt.setAttribute('y', ty);
-//    txt.setAttribute('font-size', `${h_scale/(q*q)}px`);
-//    txt.appendChild(document.createTextNode(q));
-//    txt.innerHTML = `<span class="frac"><sup class="num">${p}</sup><span class="hidden"> &frasl; </span><sub class="den">${q}</sub></span>`.replaceAll('-', '−');
-//    svg_farey.appendChild(txt);
+		const names = ['left', 'right']; const shifts = [-0.2, 0.05];
+		for (const k of [0, 1]) {
+			const g = document.createElementNS(ns, 'g');
+			const [txp, typ] = h_rescale(x + shifts[k] - (p>9 ? 0.05 : 0), -0.25);
+			const txtp = document.createElementNS(ns, 'text');
+			txtp.setAttribute('x', txp);
+			txtp.setAttribute('y', typ);
+			txtp.setAttribute('font-size', `${h_scale/4}px`);
+			txtp.appendChild(document.createTextNode(p));
+			g.appendChild(txtp);
+			const [txq, tyq] = h_rescale(x + shifts[k] - (q>9 ? 0.05 : 0), -0.5);
+			const txtq = document.createElementNS(ns, 'text');
+			txtq.setAttribute('x', txq);
+			txtq.setAttribute('y', tyq);
+			txtq.setAttribute('font-size', `${h_scale/4}px`);
+			txtq.appendChild(document.createTextNode(q));
+			g.appendChild(txtq);
+			const line = document.createElementNS(ns, 'line');
+			const [txl, tyl] = h_rescale(x+shifts[k], -0.3);
+			line.setAttribute('x1', txl);
+			line.setAttribute('y1', tyl);
+			const [txl2, tyl2] = h_rescale(x+shifts[k]+0.125, -0.3);
+			line.setAttribute('x2', txl2);
+			line.setAttribute('y2', tyl);
+			line.setAttribute('stroke-width', 1);
+			line.setAttribute('stroke', 'black');
+			g.appendChild(line);
+			g.setAttribute('visibility', 'hidden');
+			g.setAttribute('id', `fareyh-label-${names[k]}-${i}`);
+			svg_farey.appendChild(g);
+		}
 	}
 	const xy = disk_pq2xy(p, q);
 	const dp = disk_position(...xy);
@@ -568,25 +591,39 @@ function update_ford_circles() {
 	}
 }
 
-function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (possibly 1/0)
+function draw_farey_edge(ff1, ff2, highlighting_id = '') { // expecting 0 <= fraction_1 < fraction_2 (possibly 1/0)
 	const [p1, q1] = ff1;
 	const [p2, q2] = ff2;
 	const [x1d, y1d] = disk_pq2xy(p1, q1);
 	const [x2d, y2d] = disk_pq2xy(p2, q2);
 	const [dp1, dp2] = [disk_position(x1d, y1d), disk_position(x2d, y2d)];
-	if (x1d + x2d === 0) {
+	if (x1d + x2d == 0) {
 		const line = document.createElementNS(ns, 'line');
 		line.setAttribute('x1', dp1[0]);
 		line.setAttribute('y1', dp1[1]);
 		line.setAttribute('x2', dp2[0]);
 		line.setAttribute('y2', dp2[1]);
-		line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		if (highlighting_id) {
+			line.setAttribute('visibility', 'hidden');
+			line.setAttribute('stroke', HIGHLIGHT_STYLE);
+			line.setAttribute('stroke-width', 5);
+			line.setAttribute('id', 'fareyd-edge-hl-' + highlighting_id);
+		} else {
+			line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		}
 		svg_farey_disk.appendChild(line);
 	} else {
 		const arc_r = disk_r * (y1d - y2d) / (x1d + x2d);
 		const arc_d = document.createElementNS(ns, 'path');
 		arc_d.setAttribute('d', `M${dp1[0]},${dp1[1]} A${arc_r},${arc_r} 0 0,1 ${dp2[0]},${dp2[1]}`);
-		arc_d.setAttribute('stroke', FAREY_EDGE_STROKE);
+		if (highlighting_id) {
+			arc_d.setAttribute('visibility', 'hidden');
+			arc_d.setAttribute('stroke', HIGHLIGHT_STYLE);
+			arc_d.setAttribute('stroke-width', 5);
+			arc_d.setAttribute('id', 'fareyd-edge-hl-' + highlighting_id);
+		} else {
+			arc_d.setAttribute('stroke', FAREY_EDGE_STROKE);
+		}
 		arc_d.setAttribute('fill', 'none');
 		svg_farey_disk.appendChild(arc_d);
 	}
@@ -598,7 +635,14 @@ function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (
 		line.setAttribute('y1', y);
 		line.setAttribute('x2', x);
 		line.setAttribute('y2', 0);
-		line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		if (highlighting_id) {
+			line.setAttribute('visibility', 'hidden');
+			line.setAttribute('stroke', HIGHLIGHT_STYLE);
+			line.setAttribute('stroke-width', 5);
+			line.setAttribute('id', 'fareyh-edge-hl-' + highlighting_id);
+		} else {
+			line.setAttribute('stroke', FAREY_EDGE_STROKE);
+		}
 		svg_farey.appendChild(line);
 		return;
 	}
@@ -608,7 +652,14 @@ function draw_farey_edge(ff1, ff2) { // expecting 0 <= fraction_1 < fraction_2 (
 	const r = (f2 - f1) / 2;
 	const arc = document.createElementNS(ns, 'path');
 	arc.setAttribute('d', `M${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2}`);
-	arc.setAttribute('stroke', FAREY_EDGE_STROKE);
+	if (highlighting_id) {
+		arc.setAttribute('visibility', 'hidden');
+		arc.setAttribute('stroke', HIGHLIGHT_STYLE);
+		arc.setAttribute('stroke-width', 5);
+		arc.setAttribute('id', 'fareyh-edge-hl-' + highlighting_id);
+	} else {
+		arc.setAttribute('stroke', FAREY_EDGE_STROKE);
+	}
 	arc.setAttribute('fill', 'none');
 	svg_farey.appendChild(arc);
 }
@@ -724,11 +775,19 @@ function highlight_edge(e = null, only_pos = false) {
 }
 
 function set_edge_highlighting(e, h) {
+	const vis = (h ? 'visible' : 'hidden');
 	const [v1, v2] = e;
 	const edge = document.getElementById('pol-edge-hl-'+v1+'-'+v2);
-	console.assert(edge, '%o', {e});
-	edge.setAttribute('visibility', h ? 'visible' : 'hidden');
+	edge.setAttribute('visibility', vis);
 	if (!neg_diags) {
+		document.getElementById('fareyh-edge-hl-'+v1+'-'+v2).setAttribute('visibility', vis);
+		if (v1 !== 0) {
+			document.getElementById('fareyh-label-left-' +v1).setAttribute('visibility', vis);
+		}
+		if (v2 !== 0) {
+			document.getElementById('fareyh-label-right-'+v2).setAttribute('visibility', vis);
+		}
+		document.getElementById('fareyd-edge-hl-'+v1+'-'+v2).setAttribute('visibility', vis);
 		for (const v of e) {
 			set_cell_highlighting('f_cell-' + v, h);
 		}
@@ -751,14 +810,18 @@ function highlight_vertex(v = null, only_pos = false) {
 }
 
 function set_vertex_highlighting(v, h) {
+	const vis = (h ? 'visible' : 'hidden');
 	const vertex = document.getElementById('pol-vx-hl-'+v);
-	vertex.setAttribute('visibility', h ? 'visible' : 'hidden');
+	vertex.setAttribute('visibility', vis);
 	if (!neg_diags) {
 		if (v !== 0) {
-			document.getElementById('fareyh-vx-hl-'+v).setAttribute('visibility', h ? 'visible' : 'hidden');
+			document.getElementById('fareyh-label-right-'+v).setAttribute('visibility', vis);
+			document.getElementById('fareyh-vx-hl-'+v).setAttribute('visibility', vis);
 		}
-		document.getElementById('fareyd-vx-hl-'+v).setAttribute('visibility', h ? 'visible' : 'hidden');
+		document.getElementById('fareyd-vx-hl-'+v).setAttribute('visibility', vis);
 		set_cell_highlighting('f_cell-' + v, h);
+		const iti = (v === 0 ? [n-1, 1] : v === n-1 ? [n-2, 0] : [v+1, v-1]);
+		set_cell_highlighting('fr-' + iti[0] + '-' + iti[1], h);
 	}
 	set_cell_highlighting('fr-' + v + '-' + v, h);
 }
