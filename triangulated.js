@@ -275,7 +275,7 @@ function flip(i) { // i is the index of the diagonal to flip
 }
 
 function right_click_action(i) {
-	// cyclically go from unfrozen 1 to frozen -1 to frozen 1 to unfrozen 1
+	// cyclically go from unspecialised initial cluster variable to specialised_to_-1 to specialised_to_1 to unspecialised
 	if (diags[i][2]) {
 		if (diags[i][1] === -1) {
 			diags[i][1] = 1;
@@ -304,7 +304,11 @@ function adjacent(i1, i2) {
 }
 
 function adjacent_ordered(i1, i2) {
-	return i1-i2 === 1 || i1 === n-1 && i2 === 0 || diags.find(d => d[0][0] === i1 && d[0][1] === i2)
+	return i1-i2 === 1 || i1 === n-1 && i2 === 0 || diags.find(d => d[0][0] === i1 && d[0][1] === i2);
+}
+
+function cyclically_ordered(i1, i2, i3) {
+	return i1 < i2 && i2 < i3 || i3 < i1 && i1 < i2 || i2 < i3 && i3 < i1;
 }
 
 function calculate_frieze() {
@@ -703,11 +707,23 @@ const HIGHLIGHT_STYLE = '#F0F000', EDGE_STYLE = new Map([
 	[-1, '#D000D0'],
 ]);
 
+const QUIVER_STYLE = '#FFAA00', QUIVER_OPACITY = 0.2;
+
 function draw_polygon() {
 	svg_polygon.replaceChildren();
+	svg_polygon.appendChild(svg_defs());
 	for (let v1 = 1; v1 < n; v1++) {
 		for (let v2 = 0; v2 < v1; v2++) {
 			draw_edge_highlight(v1, v2);
+		}
+	}
+	for (const [i, d] of diags.entries()) {
+		const [v1, v2] = d[0];
+		for (let v = 0; v < n; v++) {
+			if (v !== (v1+1)%n && v !== (v2+1)%n && adjacent(v1, v) && adjacent(v2, v)) {
+				const [u1, u2] = (cyclically_ordered(v1, v, v2) ? [v1, v2] : [v2, v1]);
+				draw_arrow(v, u1, u2);
+			}
 		}
 	}
 	for (let v = 0; v < n; v++) {
@@ -767,6 +783,40 @@ function draw_edge_highlight(v1, v2) {
 	line.setAttribute('visibility', 'hidden');
 	line.setAttribute('id', 'pol-edge-hl-'+v1+'-'+v2);
 	svg_polygon.appendChild(line);
+}
+
+function draw_arrow(i, i1, i2) {
+	const [v, v1, v2] = [vx[i], vx[i1], vx[i2]];
+	const m1 = [(v1[0]+v2[0])/2, (v1[1]+v2[1])/2];
+	const m2 = [(v1[0]+v [0])/2, (v1[1]+v [1])/2];
+	const line = document.createElementNS(ns, 'line');
+	line.setAttribute('x1', m1[0]);
+	line.setAttribute('y1', m1[1]);
+	line.setAttribute('x2', m2[0]);
+	line.setAttribute('y2', m2[1]);
+	line.setAttribute('stroke-width', 3);
+	line.setAttribute('stroke', QUIVER_STYLE);
+	line.setAttribute('opacity', QUIVER_OPACITY);
+	line.setAttribute('marker-end', 'url(#arrow)');
+	svg_polygon.appendChild(line);
+}
+
+function svg_defs() {
+	const defs = document.createElementNS(ns, 'defs');
+	const marker = document.createElementNS(ns, 'marker');
+	marker.setAttribute('id', 'arrow');
+	marker.setAttribute('markerWidth', '8');
+	marker.setAttribute('markerHeight', '5');
+	marker.setAttribute('viewBox', '0 0 12 10');
+	marker.setAttribute('refX', '12');
+	marker.setAttribute('refY', '5');
+	marker.setAttribute('orient', 'auto');
+	const path = document.createElementNS(ns, 'path');
+	path.setAttribute('d', 'M 0 0 L 12 5 L 0 10 z');
+	path.setAttribute('fill', QUIVER_STYLE);
+	marker.appendChild(path);
+	defs.appendChild(marker);
+	return defs;
 }
 
 function clear_highlights() {
