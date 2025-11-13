@@ -414,6 +414,12 @@ function draw_farey() {
 	h_scale = m <= 3 ? 100 : 350 / (m + 0.5);
 	svg_farey.replaceChildren();
 	svg_farey_disk.replaceChildren();
+	const g_hl = document.createElementNS(ns, 'g');
+	g_hl.setAttribute('id', 'farey-g-hl');
+	svg_farey.appendChild(g_hl);
+	const g_hl_d = document.createElementNS(ns, 'g');
+	g_hl_d.setAttribute('id', 'farey_disk-g-hl');
+	svg_farey_disk.appendChild(g_hl_d);
 	const line = document.createElementNS(ns, 'line'); // real axis
 	line.setAttribute('x1', 0);
 	line.setAttribute('y1', h_origin[1]);
@@ -608,24 +614,26 @@ function draw_farey_edge(ff1, ff2, highlighting_id = '') { // expecting 0 <= fra
 			line.setAttribute('stroke', HIGHLIGHT_STYLE);
 			line.setAttribute('stroke-width', 5);
 			line.setAttribute('id', 'fareyd-edge-hl-' + highlighting_id);
+			document.getElementById('farey_disk-g-hl').appendChild(line);
 		} else {
 			line.setAttribute('stroke', FAREY_EDGE_STROKE);
+			svg_farey_disk.appendChild(line);
 		}
-		svg_farey_disk.appendChild(line);
 	} else {
 		const arc_r = disk_r * (y1d - y2d) / (x1d + x2d);
 		const arc_d = document.createElementNS(ns, 'path');
 		arc_d.setAttribute('d', `M${dp1[0]},${dp1[1]} A${arc_r},${arc_r} 0 0,1 ${dp2[0]},${dp2[1]}`);
+		arc_d.setAttribute('fill', 'none');
 		if (highlighting_id) {
 			arc_d.setAttribute('visibility', 'hidden');
 			arc_d.setAttribute('stroke', HIGHLIGHT_STYLE);
 			arc_d.setAttribute('stroke-width', 5);
 			arc_d.setAttribute('id', 'fareyd-edge-hl-' + highlighting_id);
+			document.getElementById('farey_disk-g-hl').appendChild(arc_d);
 		} else {
 			arc_d.setAttribute('stroke', FAREY_EDGE_STROKE);
+			svg_farey_disk.appendChild(arc_d);
 		}
-		arc_d.setAttribute('fill', 'none');
-		svg_farey_disk.appendChild(arc_d);
 	}
 	const f1 = p1 / q1;
 	if (q2 === 0) {
@@ -640,10 +648,11 @@ function draw_farey_edge(ff1, ff2, highlighting_id = '') { // expecting 0 <= fra
 			line.setAttribute('stroke', HIGHLIGHT_STYLE);
 			line.setAttribute('stroke-width', 5);
 			line.setAttribute('id', 'fareyh-edge-hl-' + highlighting_id);
+			document.getElementById('farey-g-hl').appendChild(line);
 		} else {
 			line.setAttribute('stroke', FAREY_EDGE_STROKE);
+			svg_farey.appendChild(line);
 		}
-		svg_farey.appendChild(line);
 		return;
 	}
 	const f2 = p2 / q2;
@@ -652,16 +661,17 @@ function draw_farey_edge(ff1, ff2, highlighting_id = '') { // expecting 0 <= fra
 	const r = (f2 - f1) / 2;
 	const arc = document.createElementNS(ns, 'path');
 	arc.setAttribute('d', `M${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2}`);
+	arc.setAttribute('fill', 'none');
 	if (highlighting_id) {
 		arc.setAttribute('visibility', 'hidden');
 		arc.setAttribute('stroke', HIGHLIGHT_STYLE);
 		arc.setAttribute('stroke-width', 5);
 		arc.setAttribute('id', 'fareyh-edge-hl-' + highlighting_id);
+		document.getElementById('farey-g-hl').appendChild(arc);
 	} else {
 		arc.setAttribute('stroke', FAREY_EDGE_STROKE);
+		svg_farey.appendChild(arc);
 	}
-	arc.setAttribute('fill', 'none');
-	svg_farey.appendChild(arc);
 }
 
 function disk_pq2xy(p, q) {
