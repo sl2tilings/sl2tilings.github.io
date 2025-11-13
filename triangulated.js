@@ -23,8 +23,9 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 	draw_polygon();
 	render_fractions();
 	draw_farey();
-	render_frieze();
-	render_cluster_vars();
+	const [f, poly] = calculate_frieze();
+	render_frieze(f, poly);
+	render_cluster_vars(poly);
 	clear_highlights();
 //	console.log(itinerary);
 //	console.log(diags);
@@ -104,8 +105,7 @@ function render_fractions() {
 	itinerary_table.replaceChildren(row_x, row, row_f);
 }
 
-function render_frieze() {
-	const [f, not_in_den] = calculate_frieze();
+function render_frieze(f, not_in_den) {
 	const rows = [];
 	for (const [i, e] of f.entries()) {
 		const row = document.createElement('tr');
@@ -157,7 +157,7 @@ function render_frieze() {
 	}
 }
 
-function render_cluster_vars() {
+function render_cluster_vars(poly) {
 	console.assert(cluster_vars);
 	cluster_vars_text.replaceChildren();
 	for (const [i, d] of diags.entries()) {
@@ -169,6 +169,12 @@ function render_cluster_vars() {
 		const x = document.createElement('span');
 		x.setAttribute('id', 'xx-'+i);
 		x.innerHTML = `<i>x</i><sub>${i+1}</sub>`;
+		if (d[2]) {
+			x.appendChild(document.createTextNode((' = ' + d[1]).replaceAll('-', '−')));
+		}
+		if (poly[i]) {
+			x.classList.add('frieze-entry-poly');
+		}
 		x.addEventListener('mouseover', () => highlight_edge([v1, v2]));
 		x.addEventListener('mouseout', clear_highlights);
 		cluster_vars_text.appendChild(x);
@@ -805,6 +811,17 @@ function set_edge_highlighting(e, h) {
 	set_cell_highlighting('fr-' + v1 + '-' + v2, h);
 	if (v1-v2 > 1 && !(v1 === n-1 && v2 === 0)) {
 		set_cell_highlighting('cv-' + v1 + '-' + v2, h);
+	}
+	for (const [i, d] of diags.entries()) {
+		let [u1, u2] = d[0];
+		if (u1 < u2) {
+			u1 = d[0][1];
+			u2 = d[0][0];
+		}
+		if (u1 === v1 && u2 === v2) {
+			set_cell_highlighting('xx-' + i, h);
+			break;
+		}
 	}
 }
 
