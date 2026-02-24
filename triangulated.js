@@ -1,7 +1,7 @@
 'use strict';
 
 let svg_polygon, svg_farey, svg_farey_disk, itinerary_table, frieze_table, cluster_vars_table, cluster_vars_text;
-let vx, closest_diag, highlighted_vertex = null, highlighted_diag = null;
+let vx, closest_diag, highlighted_vertex, highlighted_diag;
 let negative_text_hidden = true, neg_diags = false;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1, false]); // the itinerary 1, n-2, 1, 2, 2, 2...
@@ -11,6 +11,7 @@ const h_origin = [50, 200]; let h_scale; const disk_r = 120; let disk_origin;
 const ns = 'http://www.w3.org/2000/svg';
 
 function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
+	highlighted_vertex = highlighted_diag = null;
 	vx = [...Array(n).keys()].map(i => {
 		const [cx, cy] = [svg_polygon.getAttribute('width') / 2, svg_polygon.getAttribute('height') / 2];
 		const r = cy - 10;
@@ -322,7 +323,7 @@ function calculate_frieze() {
 	frieze.push([1]);
 	calculate_cluster_vars();
 	// evaluate cluster_vars to fill in the frieze
-	// The coordinates on frieze are row number and the number of entry in the row number, counting from the starting diagonal in the frieze.
+	// The coordinates on frieze are row number and the number of entry in the row, counting from the starting diagonal in the frieze.
 	// The coordinates on triangulations and cluster_vars are 1st vertex and 2nd vertex (i. e. axes are along two diagonals in the frieze).
 	const vars = diags.map(d => d[1]);
 	for (let i = 2; i < n; i++) {
@@ -497,12 +498,9 @@ function draw_ford_circle(ff, i) {
 	const odd = i % 2;
 	const [p, q] = ff;
 	if (q === 0) {
-		const y = h_origin[1] - h_scale;
 		ford_line = document.createElementNS(ns, 'line');
-		ford_line.setAttribute('x1', 0);
-//		ford_line.setAttribute('y1', y); // set later in update_ford_circles
+		ford_line.setAttribute('x1', 0); // y-coordinates are set later in update_ford_circles
 		ford_line.setAttribute('x2', 400);
-//		ford_line.setAttribute('y2', y);
 		ford_line.setAttribute('stroke', FORD_STROKE);
 		svg_farey.appendChild(ford_line);
 	} else {
@@ -914,11 +912,10 @@ function set_cell_highlighting(cell_id, h) {
 
 function on_move(e) {
 	const pos = mousePosition(svg_polygon, e);
-	const old_closest_diag = closest_diag;
 	let min_distance = segment_to_point_distance([0, n-1], pos);
 	let closest_side = n-1;
 	for (let i = 0; i < n-1; i++) {
-		const dist = segment_to_point_distance([i, i+1], pos)
+		const dist = segment_to_point_distance([i, i+1], pos);
 		if (dist < min_distance) {
 			min_distance = dist;
 			closest_side = i;
@@ -945,7 +942,7 @@ function on_move(e) {
 
 function on_click(e) {
 	if (closest_diag === null) {
-		return
+		return;
 	}
 	if (e.which === 1) {
 		flip(closest_diag);
@@ -999,7 +996,7 @@ function init_once() {
 	init();
 	svg_polygon.addEventListener('mousemove', on_move);
 	svg_polygon.addEventListener('mouseup', on_click);
-	svg_polygon.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault() });
+	svg_polygon.addEventListener('contextmenu', e => { if (closest_diag !== null) e.preventDefault(); });
 	svg_polygon.addEventListener('mouseout', clear_highlights);
 }
 
