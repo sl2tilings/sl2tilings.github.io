@@ -2,6 +2,8 @@
 
 class LaurentPolynomial {
 	static nvars; // number of variables
+	static ZERO;
+	static ONE;
 	
 	constructor(num_terms, den) {
 		this.num_terms = num_terms; // Numerator. Must be a Map, keys are lists of nonnegative exponents of variables of length nvars, values are coefficients.
@@ -11,9 +13,19 @@ class LaurentPolynomial {
 	// Note: be careful when working with num_terms, as its keys are arrays, which by default are not compared termwise.
 	// All (non-static) methods of this class do not expose the array objects.
 	
+	static use_numbers() {
+		this.ZERO = 0;
+		this.ONE = 1;
+	}
+	
+	static use_bigints() {
+		this.ZERO = 0n;
+		this.ONE = 1n;
+	}
+	
 	cleanup() {
 		for (const [e, c] of this.num_terms) { // delete terms with coefficient 0
-			if (c === 0) {
+			if (c === this.constructor.ZERO) {
 				this.num_terms.delete(e);
 			}
 		}
@@ -39,7 +51,7 @@ class LaurentPolynomial {
 		if (i !== null) {
 			e[i] = 1;
 		}
-		const num_terms = new Map([[e, 1]]);
+		const num_terms = new Map([[e, this.ONE]]);
 		const den = Array(this.nvars).fill(0);
 		return new this(num_terms, den);
 	}
@@ -83,36 +95,37 @@ class LaurentPolynomial {
 	div(dividend) { // Divide by another Laurent polynomial. It is assumed that the division results in another Laurent polynomial.
 		if (dividend.num_terms.size === 1) {
 			const [e, c] = dividend.num_terms.entries().next().value;
-			const inv = new this.constructor(new Map([[dividend.den, 1/c]]), e);
+			const inv = new this.constructor(new Map([[dividend.den, this.constructor.ONE/c]]), e);
 			return this.mul(inv);
 		}
 		const p = new this.constructor(Polynomial.from_map(this.num_terms).div(Polynomial.from_map(dividend.num_terms)).into_map(), this.den);
-		const inv = new this.constructor(new Map([[dividend.den, 1]]), Array(this.constructor.nvars).fill(0));
+		const inv = new this.constructor(new Map([[dividend.den, this.constructor.ONE]]), Array(this.constructor.nvars).fill(0));
 		return p.mul(inv);
 	}
 	
 	evaluate(vars) {
-		let num = 0;
+		let num = this.constructor.ZERO;
 		for (const [e, c] of this.num_terms) {
 			num += this.constructor.evaluate_monomial(vars, e, c);
 		}
 		const den = this.constructor.evaluate_monomial(vars, this.den);
-		return num / den; // Numbers in js are internally floats anyway. For integers below 2^53 this must work fine.
+		return num / den;	// When using numbers, this works correctly for integers below 2^53.
+							// When using bigints, this works correctly if the division is exact.
 	}
 	
-	static evaluate_monomial(vars, e, c = 1) {
+	static evaluate_monomial(vars, e, c = this.ONE) {
 		let r = c;
 		for (let i = 0; i < this.nvars; i++) {
-			r *= vars[i]**e[i];
+			r *= c.constructor(vars[i])**c.constructor(e[i]);
 		}
 		return r;
 	}
 	
 	evaluate_partially(vars) { // In this function, vars is a map.
 		const den_new = [...this.den];
-		let c = 1;
+		let c = this.constructor.ONE;
 		for (const [i, v] of vars.entries()) {
-			c /= v**den_new[i]; // v is assumed to be nonzero
+			c /= c.constructor(v)**c.constructor(den_new[i]); // v is assumed to be nonzero
 			den_new[i] = 0;
 		}
 		const num_terms_new = new Map();
@@ -120,7 +133,7 @@ class LaurentPolynomial {
 			const e_new = [...e];
 			let c_new = c * c0;
 			for (const [i, v] of vars.entries()) {
-				c_new *= v**e[i]; // v is assumed to be nonzero
+				c_new *= c.constructor(v)**c.constructor(e[i]); // v is assumed to be nonzero
 				e_new[i] = 0;
 			}
 			add_to_map_polynomial(num_terms_new, e_new, c_new);
@@ -216,12 +229,12 @@ function with_coeff(s0, c, plus) {
 	let s = s0;
 	if (s === '') {
 		s = '' + c;
-	} else if (c === -1) {
+	} else if (c == -1) {
 		s = '-' + s;
-	} else if (c !== 1) {
+	} else if (c != 1) {
 		s = '' + c + s;
 	}
-	if (plus && c > 0) {
+	if (plus && c > c.constructor(0)) {
 		s = '+' + s;
 	}
 	return s;
@@ -294,7 +307,7 @@ class Polynomial {
 	cleanup() {
 		for (const i of this.terms.keys()) {
 			for (const [e, c] of this.terms[i]) {
-				if (c === 0) {
+				if (c == 0) {
 					this.terms[i].delete(e);
 				}
 			}
@@ -305,7 +318,6 @@ class Polynomial {
 	}
 	
 	sub_assign(subtrahend) {
-		let flag;
 		console.assert(this.nvars === subtrahend.nvars, '%o', {subtrahend});
 		for (let i = 0; i < Math.min(this.terms.length, subtrahend.terms.length); i++) {
 			for (const [e, c] of subtrahend.terms[i]) {
@@ -354,3 +366,5 @@ function add_to_map_polynomial(m, e, c) {
 	}
 	m.set(e, c);
 }
+
+LaurentPolynomial.use_bigints();
