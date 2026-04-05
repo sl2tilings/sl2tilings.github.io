@@ -6,23 +6,28 @@ let negative_text_hidden = true, neg_diags = false;
 let n = 6;
 let diags = [...Array(n-3).keys()].map(i => [[0, i+2], 1, false]); // the itinerary 1, n-2, 1, 2, 2, 2...
 let itinerary = null, farey_path, cluster_vars;
-let ford_circle_factor = 1, ford_circles, ford_circles_disk, ford_line, ford_slider, ford_slider_pressed = false;
+let ford_circle_factor, ford_circles, ford_circles_disk, ford_line, ford_slider, ford_slider_pressed = false;
 const h_origin = [50, 200]; let h_scale; const disk_r = 120; let disk_origin;
 const ns = 'http://www.w3.org/2000/svg';
 
-function init() { // n, diags, and itinerary are assumed to be defined and consistent (itinerary can be null)
+function init() { // diags and itinerary are assumed to be defined and consistent with each other, or one of them is null
+	if (itinerary === null) {
+		set_itinerary_from_diags();
+	}
+	render_fractions();
+	if (diags === null) {
+		set_diags_from_itinerary();
+	}
+	n = itinerary.length;
 	highlighted_vertex = highlighted_diag = null;
+	ford_circle_factor = 1;
 	vx = [...Array(n).keys()].map(i => {
 		const [cx, cy] = [svg_polygon.getAttribute('width') / 2, svg_polygon.getAttribute('height') / 2];
 		const r = cy - 10;
 		const a = Math.PI * (2.0 * i / n - 0.5);
 		return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
 	});
-	if (itinerary === null) {
-		set_itinerary_from_diags();
-	}
 	draw_polygon();
-	render_fractions();
 	draw_farey();
 	const [f, poly] = calculate_frieze();
 	render_frieze(f, poly);
@@ -33,7 +38,18 @@ function init() { // n, diags, and itinerary are assumed to be defined and consi
 }
 
 function set_itinerary_from_diags() {
-	itinerary = Array.from(vx, (_, i) => diags.filter(d => d[0][0] === i || d[0][1] === i).length + 1);
+	itinerary = [...Array(diags.length+3).keys()].map(i => diags.filter(d => d[0][0] === i || d[0][1] === i).length + 1);
+}
+
+function set_diags_from_itinerary() {
+	diags = [];
+	for (let j = 2; j < n; j++) {
+		for (let i = (j == n-1 ? 1 : 0); i < j-1; i++) {
+			if (farey_path[i][0]*farey_path[j][1] - farey_path[i][1]*farey_path[j][0] === 1) {
+				diags.push([[i, j], 1, false]);
+			}
+		}
+	}
 }
 
 function render_fractions() {
@@ -417,6 +433,15 @@ function calculate_cluster_vars() {
 //	cluster_vars.forEach(row => console.log(row.map(cv => cv === null ? '1' : cv.latex()).join(',  ')));
 }
 
+function itinerary_every_other_even() {
+	let evens_even = true, odds_even = true;
+	for (let i = 0; i < n; i++) {
+		if (i%2 == 0 && itinerary[i]%2 != 0) evens_even = false;
+		if (i%2 != 0 && itinerary[i]%2 != 0) odds_even = false;
+	}
+	return evens_even ? 0 : odds_even ? 1 : null;
+}
+
 const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray', H_BOUNDARY_STROKE = 'black';
 
 function draw_farey() {
@@ -459,21 +484,24 @@ function draw_farey() {
 	}
 	if (n % 2 === 0) {
 		const [cx, cy] = h_rescale(0, 1);
-		ford_slider = document.createElementNS(ns, 'circle');
-		ford_slider.setAttribute('r', 0.1 * h_scale);
-		ford_slider.setAttribute('cx', cx);
-		ford_slider.setAttribute('stroke', 'black');
-		ford_slider.setAttribute('stroke-width', 0.03 * h_scale);
-		ford_slider.setAttribute('fill', FORD_SLIDER_FILL);
+		const ford_slider_main = document.createElementNS(ns, 'circle');
+		ford_slider_main.setAttribute('r', 0.1 * h_scale);
+		ford_slider_main.setAttribute('cx', cx);
+		ford_slider_main.setAttribute('cy', cy);
+		ford_slider_main.setAttribute('stroke', 'black');
+		ford_slider_main.setAttribute('stroke-width', 0.03 * h_scale);
+		ford_slider_main.setAttribute('fill', FORD_SLIDER_FILL);
+		ford_slider = document.createElementNS(ns, 'g');
+		ford_slider.appendChild(ford_slider_main);
 		svg_farey.appendChild(ford_slider);
 		ford_slider.addEventListener('pointerdown', e => {
 			ford_slider_pressed = true;
-			ford_slider.setAttribute('fill', FORD_SLIDER_FILL_ACTIVE);
+			ford_slider_main.setAttribute('fill', FORD_SLIDER_FILL_ACTIVE);
 			ford_slider.setPointerCapture(e.pointerId);
 		});
 		ford_slider.addEventListener('pointerup', e => {
 			ford_slider_pressed = false;
-			ford_slider.setAttribute('fill', FORD_SLIDER_FILL);
+			ford_slider_main.setAttribute('fill', FORD_SLIDER_FILL);
 		});
 		ford_slider.addEventListener('pointermove', e => {
 			if (!ford_slider_pressed) {
@@ -488,6 +516,28 @@ function draw_farey() {
 			ford_circle_factor = 1;
 			update_ford_circles();
 		});
+		const eoe = itinerary_every_other_even();
+		if (eoe !== null) {
+			const ford_slider_aux = document.createElementNS(ns, 'circle');
+			ford_slider_aux.setAttribute('r', 0.1 * h_scale);
+			ford_slider_aux.setAttribute('cx', cx);
+			ford_slider_aux.setAttribute('cy', cy);
+			ford_slider_aux.setAttribute('stroke', '#00F000');
+			ford_slider_aux.setAttribute('stroke-width', 0.01 * h_scale);
+			ford_slider_aux.setAttribute('fill', 'none');
+			ford_slider.appendChild(ford_slider_aux);
+			ford_slider.addEventListener('dblclick', e => {
+				for (let i = 0; i < n; i++) {
+					if (eoe === i%2) {
+						itinerary[i] /= 2;
+					} else {
+						itinerary[i] *= 2;
+					}
+				}
+				diags = null;
+				init();
+			});
+		}
 	} else {
 		ford_slider = null;
 	}
@@ -588,7 +638,7 @@ function update_ford_circles() {
 		c.setAttribute('r', r * h_scale);
 	}
 	if (ford_slider) {
-		ford_slider.setAttribute('cy', y);
+		ford_slider.setAttribute('transform', `translate(0 ${h_scale * (1 - ford_circle_factor)})`);
 	}
 	for (let [c, xy, f, odd] of ford_circles_disk) {
 		if (odd) {
