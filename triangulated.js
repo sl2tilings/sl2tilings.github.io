@@ -433,13 +433,17 @@ function calculate_cluster_vars() {
 //	cluster_vars.forEach(row => console.log(row.map(cv => cv === null ? '1' : cv.latex()).join(',  ')));
 }
 
-function itinerary_every_other_even() {
-	let evens_even = true, odds_even = true;
-	for (let i = 0; i < n; i++) {
-		if (i%2 == 0 && itinerary[i]%2 != 0) evens_even = false;
-		if (i%2 != 0 && itinerary[i]%2 != 0) odds_even = false;
+function itinerary_every_other_factor() {
+	for (const factor of [2, 3]) {
+		let evens = true, odds = true;
+		for (let i = 0; i < n; i++) {
+			if (i%2 == 0 && itinerary[i]%factor != 0) evens = false;
+			if (i%2 != 0 && itinerary[i]%factor != 0) odds = false;
+		}
+		if (evens) return [factor, 0];
+		if (odds) return [factor, 1];
 	}
-	return evens_even ? 0 : odds_even ? 1 : null;
+	return [null, null];
 }
 
 const FORD_STROKE = 'SteelBlue', FAREY_EDGE_STROKE = 'gray', FORD_SLIDER_FILL = 'white', FORD_SLIDER_FILL_ACTIVE = 'gray', H_BOUNDARY_STROKE = 'black';
@@ -516,7 +520,7 @@ function draw_farey() {
 			ford_circle_factor = 1;
 			update_ford_circles();
 		});
-		const eoe = itinerary_every_other_even();
+		const [factor, eoe] = itinerary_every_other_factor();
 		if (eoe !== null) {
 			const ford_slider_aux = document.createElementNS(ns, 'circle');
 			ford_slider_aux.setAttribute('r', 0.1 * h_scale);
@@ -529,9 +533,9 @@ function draw_farey() {
 			ford_slider.addEventListener('dblclick', e => {
 				for (let i = 0; i < n; i++) {
 					if (eoe === i%2) {
-						itinerary[i] /= 2;
+						itinerary[i] /= factor;
 					} else {
-						itinerary[i] *= 2;
+						itinerary[i] *= factor;
 					}
 				}
 				diags = null;
